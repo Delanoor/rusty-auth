@@ -11,7 +11,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: hwn
+    environment: ENV
 
     steps:
       # Checkout code from the repository
