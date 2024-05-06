@@ -6,9 +6,13 @@ on:
     branches:
       - screst
 
+env:
+  APP_ENV: screst
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: screst
 
     steps:
       # Checkout code from the repository
