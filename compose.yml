@@ -20,7 +20,7 @@ services:
 
   nginx:
     build:
-      context: ./nginx
+      context: .
       dockerfile: Dockerfile
     image: vinorelbine/app-auth-nginx
     restart: "always"
