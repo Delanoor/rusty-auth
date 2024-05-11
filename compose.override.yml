@@ -6,3 +6,6 @@ services:
   auth-service:
     build:
       context: ./auth-service # specify directory where local Dockerfile is located
+  nginx:
+    build:
+      context: .

@@ -1,19 +1,32 @@
 version: "3.9"
 services:
   app-service:
-    # TODO: change "letsgetrusty" to your Docker Hub username
+    container_name: app-service
     image: vinorelbine/app-service # specify name of image on Docker Hub
     restart: "always" # automatically restart container when server crashes
     environment: # set up environment variables
       AUTH_SERVICE_IP: ${AUTH_SERVICE_IP}
     ports:
-      - "8000:8000" # expose port 8000 so that applications outside the container can connect to it
+      - 8000
     depends_on: # only run app-service after auth-service has started
       auth-service:
         condition: service_started
   auth-service:
-    # TODO: change "letsgetrusty" to your Docker Hub username
+    container_name: auth-service
     image: vinorelbine/auth-service
     restart: "always" # automatically restart container when server crashes
     ports:
-      - "3000:3000" # expose port 3000 so that applications outside the container can connect to it
+      - 3000
+
+  nginx:
+    image: nginx:latest
+    build:
+      dockerfile: ./nginx/Dockerfile
+
+    ports:
+      - 80:80
+    volumes:
+      - ./nginx/nginx-setup.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app-service
+      - auth-service
