@@ -17,5 +17,5 @@ async fn main() {
 }
 
 async fn hello_handler() -> Html<&'static str> {
-    Html("<h1>Hello, Rust Men!</h1>")
+    Html("<h1>Hello, Rusty World!</h1>")
 }
