@@ -21,8 +21,6 @@ services:
   nginx:
     image: vinorelbine/app-auth-nginx
     restart: "always"
-    build:
-      dockerfile: ./nginx/Dockerfile
 
     ports:
       - 80:80
