@@ -8,4 +8,4 @@ services:
       context: ./auth-service # specify directory where local Dockerfile is located
   nginx:
     build:
-      context: .
+      context: ./nginx
