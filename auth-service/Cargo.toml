@@ -8,5 +8,6 @@ authors = ["Valery Shvets"]
 
 [dependencies]
 axum = "0.7.4"
+reqwest = { version = "0.12.4", default-features = false, features = ["json"] }
 tokio = { version = "1.36", features = ["full"] }
 tower-http = { version = "0.5.0", features = ["fs"] }
