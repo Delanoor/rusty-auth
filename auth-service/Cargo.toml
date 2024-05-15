@@ -9,5 +9,8 @@ authors = ["Valery Shvets"]
 [dependencies]
 axum = "0.7.4"
 reqwest = { version = "0.12.4", default-features = false, features = ["json"] }
+serde = { version = "1.0.201", features = ["derive"] }
+serde_json = "1.0.117"
 tokio = { version = "1.36", features = ["full"] }
 tower-http = { version = "0.5.0", features = ["fs"] }
+uuid = { version = "1.8.0", features = ["v4", "serde"] }
