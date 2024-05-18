@@ -3,9 +3,16 @@ services:
   app-service:
     build:
       context: ./app-service # specify directory where local Dockerfile is located
+    environment:
+      BASE_PATH: localhost
   auth-service:
     build:
       context: ./auth-service # specify directory where local Dockerfile is located
-  nginx:
-    build:
-      context: ./nginx
+
+  reverse-proxy:
+    restart: "unless-stopped"
+    ports:
+      - 80:80
+
+  certbot:
+    entrypoint: ["echo", "certbot disabled"]
