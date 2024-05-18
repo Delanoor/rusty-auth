@@ -4,46 +4,17 @@ server {
     listen [::]:${NGINX_PORT};
     server_name rustyauth.com www.rustyauth.com;
 
-    location ~ /.well-known/acme-challenge {
+    location /.well-known/acme-challenge {
         allow all;
         root /var/www/html;
     }
 
-  location / {
-    rewrite ^ https://$host$request_uri? permanent;
-  }
-}
+#   location / {
+#     return 301 https://$host$request_uri;
+#   }
 
 
-    server {
-        listen ${NGINX_HTTPS_PORT} ssl;
-        listen [::]:${NGINX_HTTPS_PORT} ssl;
-        server_name rustyauth.com www.rustyauth.com;
-        http2 on;
-
-        server_tokens off;
-
-        # ssl_certificate /etc/letsencrypt/live/rustyauth.com/fullchain.pem;
-        # ssl_certificate_key /etc/letsencrypt/live/rustyauth.com/privkey.pem;
-
-        ssl_buffer_size 8k;
-
-        ssl_protocols TLSv1.2 TLSv1.3;
-        ssl_prefer_server_ciphers on;
-
-        ssl_ciphers ECDH+AESGCM:ECDH+AES256:ECDH+AES128:DH+3DES:!ADH:!AECDH:!MD5;
-
-        ssl_ecdh_curve secp384r1;
-        ssl_session_tickets off;
-
-        ssl_stapling on;
-        ssl_stapling_verify on;
-        resolver 8.8.8.8;
-
-        root /var/www/html;
-        index index.html index.htm index.nginx-debian.html;
-
-    location /app/ {
+  location /app/ {
         proxy_pass http://app-service:${APP_SERVICE_PORT}/;
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header X-XSS-Protection "1; mode=block" always;
@@ -75,3 +46,65 @@ server {
         proxy_pass http://auth-service:${AUTH_SERVICE_PORT}/assets/;
     }
 }
+
+
+# server {
+#         listen ${NGINX_HTTPS_PORT} ssl;
+#         listen [::]:${NGINX_HTTPS_PORT} ssl;
+#         server_name rustyauth.com www.rustyauth.com;
+#         http2 on;
+
+#         server_tokens off;
+
+#         # ssl_certificate /etc/letsencrypt/live/rustyauth.com/fullchain.pem;
+#         # ssl_certificate_key /etc/letsencrypt/live/rustyauth.com/privkey.pem;
+
+#         ssl_buffer_size 8k;
+
+#         ssl_protocols TLSv1.2 TLSv1.3;
+#         ssl_prefer_server_ciphers on;
+
+#         ssl_ciphers ECDH+AESGCM:ECDH+AES256:ECDH+AES128:DH+3DES:!ADH:!AECDH:!MD5;
+
+#         ssl_ecdh_curve secp384r1;
+#         ssl_session_tickets off;
+
+#         ssl_stapling on;
+#         ssl_stapling_verify on;
+#         resolver 8.8.8.8;
+
+#         root /var/www/html;
+#         index index.html index.htm index.nginx-debian.html;
+
+#     location /app/ {
+#         proxy_pass http://app-service:${APP_SERVICE_PORT}/;
+#         add_header X-Frame-Options "SAMEORIGIN" always;
+#         add_header X-XSS-Protection "1; mode=block" always;
+#         add_header X-Content-Type-Options "nosniff" always;
+#         add_header Referrer-Policy "no-referrer-when-downgrade" always;
+#         add_header Content-Security-Policy "default-src * data: 'unsafe-eval' 'unsafe-inline'" always;
+#     }
+
+#     location /auth/ {
+#         proxy_pass http://auth-service:${AUTH_SERVICE_PORT}/;
+#         add_header X-Frame-Options "SAMEORIGIN" always;
+#         add_header X-XSS-Protection "1; mode=block" always;
+#         add_header X-Content-Type-Options "nosniff" always;
+#         add_header Referrer-Policy "no-referrer-when-downgrade" always;
+#         add_header Content-Security-Policy "default-src * data: 'unsafe-eval' 'unsafe-inline'" always;
+#     }
+
+#     location /protected/ {
+#         proxy_pass http://app-service:${APP_SERVICE_PORT}/protected;
+#     }
+
+#       # Handle all assets for app-service
+#     location /app/assets/ {
+#         proxy_pass http://app-service:${APP_SERVICE_PORT}/assets/;
+#     }
+
+#     # Handle all assets for auth-service
+#     location /auth/assets/ {
+#         proxy_pass http://auth-service:${AUTH_SERVICE_PORT}/assets/;
+#     }
+# }
