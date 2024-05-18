@@ -23,9 +23,12 @@ services:
       - cert-network
 
   reverse-proxy:
+    container_name: nginx
     image: nginx:latest
     restart: "unless-stopped"
-
+    ports:
+      - 80:80
+      - 443:443
 
     environment:
       NGINX_HOST: localhost
@@ -35,9 +38,6 @@ services:
       APP_SERVICE_PORT: 8000
       DOMAIN: rustyauth.com
 
-    ports:
-      - 80:80
-      - 443:443
     volumes:
       - ./nginx/nginx-setup.conf:/etc/nginx/conf.d/default.conf
       - web-root:/var/www/html
@@ -45,8 +45,10 @@ services:
       - certbot-var:/var/lib/letsencrypt
 
     depends_on:
-      - app-service
-      - auth-service
+      app-service:
+        condition: service_started
+      auth-service:
+        condition: service_started
     networks:
       - cert-network
 
