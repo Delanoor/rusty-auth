@@ -13,6 +13,8 @@ services:
     restart: "unless-stopped"
     ports:
       - 80:80
+    volumes:
+      - ./nginx/local_templates:/etc/nginx/templates
 
   certbot:
     entrypoint: ["echo", "certbot disabled"]
