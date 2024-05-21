@@ -1,0 +1,30 @@
+server {
+  listen ${NGINX_PORT};
+  listen [::]:${NGINX_PORT};
+  server_name localhost;
+
+  root /var/www/html;
+  index index.html index.htm index.nginx-debian.html;
+
+  location /auth/ {
+    proxy_pass http://auth-service:${AUTH_SERVICE_PORT}/;
+  }
+
+  location /app/ {
+    proxy_pass http://app-service:${APP_SERVICE_PORT}/;
+  }
+
+  location /protected/ {
+        proxy_pass http://app-service:${APP_SERVICE_PORT}/protected;
+}
+
+  # Serve static files for app-service
+  location /app/assets {
+    proxy_pass http://app-service:${APP_SERVICE_PORT}/assets/;
+  }
+
+  # Serve static files for auth-service
+  location /auth/assets {
+    proxy_pass http://auth-service:${AUTH_SERVICE_PORT}/assets/;
+  }
+}
