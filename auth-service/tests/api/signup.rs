@@ -43,8 +43,8 @@ async fn should_return_201_if_valid_input() {
     let app = TestApp::new().await;
     let body = serde_json::json!(
         {
-            "email": "test_user@email.com",
-            "password": "12341234",
+            "email": "testuser@gmail.com",
+            "password": "pwds1234",
             "requires2FA": true
         }
     );
@@ -75,11 +75,11 @@ async fn should_return_400_if_invalid_input() {
 
     // Create an array of invalid inputs. Then, iterate through the array and
     // make HTTP calls to the signup route. Assert a 400 HTTP status code is returned.
-    let input = [
+    let input: [serde_json::Value; 2] = [
         serde_json::json!(
             {
                 "email": "abc",
-                "password": "pwd123123",
+                "password": "pwds1234",
                 "requires2FA": false,
             }
         ),
@@ -112,7 +112,7 @@ async fn should_return_409_if_email_already_exists() {
     let app = TestApp::new().await;
     let body = serde_json::json!({
         "email": "test_409@email.com",
-        "password": "password123",
+        "password": "pwds1234",
         "requires2FA": false,
     });
 
