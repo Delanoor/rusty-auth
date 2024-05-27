@@ -116,13 +116,14 @@ async fn should_return_409_if_email_already_exists() {
         "requires2FA": false,
     });
 
-    app.post_signup(&body).await;
     let response = app.post_signup(&body).await;
+    assert_eq!(response.status().as_u16(), 201);
 
-    assert_eq!(response.status().as_u16(), 409);
+    let response_second = app.post_signup(&body).await;
+    assert_eq!(response_second.status().as_u16(), 409);
 
     assert_eq!(
-        response
+        response_second
             .json::<ErrorResponse>()
             .await
             .expect("Could not deserialize response body to ErrorResponse")
