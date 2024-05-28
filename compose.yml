@@ -17,6 +17,8 @@ services:
     container_name: auth-service
     image: vinorelbine/auth-service
     restart: "always" # automatically restart container when server crashes
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
     ports:
       - 3000
     networks:

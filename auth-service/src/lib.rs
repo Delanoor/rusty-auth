@@ -20,6 +20,7 @@ pub struct Application {
 pub mod app_state;
 pub mod domain;
 pub mod services;
+pub mod utils;
 
 pub mod routes;
 use routes::{login, logout, signup, verify_2fa, verify_token};
