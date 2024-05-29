@@ -6,6 +6,9 @@ on:
     branches:
       - main
 
+env:
+  JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,8 +22,7 @@ jobs:
       - name: Cache dependencies
         uses: actions/cache@v3
         with:
-          path: |
-            app-service/.cargo
+          path: app-service/.cargo
             app-service/target/
             auth-service/.cargo
             auth-service/target/
@@ -93,6 +95,7 @@ jobs:
         uses: appleboy/ssh-action@master
         with:
           host: ${{ vars.DROPLET_IP }}
+
           username: root
           password: ${{ secrets.DROPLET_PASSWORD }}
           script: |
