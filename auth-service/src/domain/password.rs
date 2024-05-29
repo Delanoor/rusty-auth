@@ -1,4 +1,4 @@
-use validator::validate_length;
+use validator::ValidateLength;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Password(pub String);
@@ -11,7 +11,7 @@ impl AsRef<str> for Password {
 
 impl Password {
     pub fn parse(s: String) -> Result<Password, String> {
-        match validate_length(&s, Some(8), None, None) {
+        match ValidateLength::validate_length(&s, Some(8), None, None) {
             true => Ok(Self(s)),
             false => Err("Failed to parse string to a Password type".to_string()),
         }
