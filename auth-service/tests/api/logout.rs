@@ -26,6 +26,11 @@ async fn should_return_200_if_valid_jwt_cookie() {
     let logout_response = app.post_logout().await;
 
     assert_eq!(logout_response.status().as_u16(), 200);
+
+    let token_store = app.token_store.read().await;
+    let get_token_response = token_store.get_token(cookie.value().to_string()).await;
+
+    assert!(get_token_response.is_ok());
 }
 
 #[tokio::test]
