@@ -4,11 +4,13 @@ services:
     build:
       context: ./app-service # specify directory where local Dockerfile is located
     environment:
-      BASE_PATH: localhost
+      BASE_PATH: http://localhost
+
   auth-service:
     build:
       context: ./auth-service # specify directory where local Dockerfile is located
-
+    environment:
+      BASE_PATH: http://localhost
   reverse-proxy:
     restart: "unless-stopped"
     ports:
