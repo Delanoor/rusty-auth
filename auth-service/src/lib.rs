@@ -9,6 +9,7 @@ use axum::{
 use domain::error::AuthAPIError;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
+use utils::constants::env::{BASE_PATH, DROPLET_IP};
 
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
@@ -55,9 +56,12 @@ impl IntoResponse for AuthAPIError {
 
 impl Application {
     pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> {
+        let droplet_ip = DROPLET_IP;
+        let base_path = BASE_PATH;
         let allowed_origins = [
             "http://localhost:8000".parse()?,
-            "http://67.205.130.46:8000".parse()?,
+            format!("https://{}:8000", droplet_ip).parse()?,
+            format!("{}/app", base_path).parse()?,
         ];
 
         let cors = CorsLayer::new()
