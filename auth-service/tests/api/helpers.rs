@@ -62,12 +62,16 @@ impl TestApp {
             .await
             .expect("Failed to execute request")
     }
-    pub async fn get_verify_token(&self) -> reqwest::Response {
+    pub async fn post_verify_token<Body: serde::Serialize>(
+        &self,
+        body: &Body,
+    ) -> reqwest::Response {
         self.http_client
             .post(&format!("{}/verify-token", &self.address))
+            .json(body)
             .send()
             .await
-            .expect("Failed to execute request")
+            .expect("Failed to execute request.")
     }
 
     pub async fn post_signup<Body>(&self, body: &Body) -> reqwest::Response
