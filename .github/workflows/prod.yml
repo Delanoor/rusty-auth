@@ -73,6 +73,11 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
 
+    env:
+      DROPLET_IP: ${{ vars.DROPLET_IP }}
+      BASE_PATH: ${{ vars.BASE_PATH }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -96,13 +101,13 @@ jobs:
         uses: appleboy/ssh-action@master
         with:
           host: ${{ vars.DROPLET_IP }}
+          envs: BASE_PATH, JWT_SECRET, DROPLET_IP
 
           username: root
           password: ${{ secrets.DROPLET_PASSWORD }}
           script: |
             cd ~
-            export JWT_SECRET=${{ secrets.JWT_SECRET }}
-            export AUTH_SERVICE_IP=${{ vars.DROPLET_IP }}
+
             docker compose down
             docker compose pull
             docker compose up -d
