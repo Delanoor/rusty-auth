@@ -65,7 +65,7 @@ pub async fn validate_token(
 ) -> Result<Claims, jsonwebtoken::errors::Error> {
     let token_store = token_store.read().await;
 
-    if token_store.get_token(token.to_owned()).await.is_ok() {
+    if token_store.get_token(token).await.is_ok() {
         return Err(jsonwebtoken::errors::Error::from(ErrorKind::InvalidToken));
     }
 
