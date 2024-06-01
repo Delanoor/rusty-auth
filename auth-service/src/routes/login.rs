@@ -30,19 +30,26 @@ pub async fn login(
         Err(_) => return (jar, Err(AuthAPIError::InvalidCredentials)),
     };
 
-    let auth_cookie = generate_auth_cookie(&email).unwrap();
-    let updated_jar = jar.add(auth_cookie);
-
     let user_store = &state.user_store.read().await;
 
-    let get_response = user_store.get_user(&email).await;
-    if get_response.is_err() {
-        return (updated_jar, Err(AuthAPIError::IncorrectCredentials));
+    if user_store.validate_user(&email, &password).await.is_err() {
+        return (jar, Err(AuthAPIError::IncorrectCredentials));
     }
+    let user = match user_store.get_user(&email).await {
+        Ok(user) => user,
+        Err(_) => return (jar, Err(AuthAPIError::IncorrectCredentials)),
+    };
 
-    let validate_response = user_store.validate_user(&email, &password).await;
-    match validate_response {
-        Ok(_) => (updated_jar, Ok(StatusCode::OK.into_response())),
-        Err(_) => (updated_jar, Err(AuthAPIError::IncorrectCredentials)),
-    }
+    let auth_cookie = match generate_auth_cookie(&user.email) {
+        Ok(cookie) => cookie,
+        Err(_) => return (jar, Err(AuthAPIError::UnexpectedError)),
+    };
+    let updated_jar = jar.add(auth_cookie);
+
+    (updated_jar, Ok(StatusCode::OK))
+
+    // match validate_response {
+    //     Ok(_) => (updated_jar, Ok(StatusCode::OK.into_response())),
+    //     Err(_) => (updated_jar, Err(AuthAPIError::IncorrectCredentials)),
+    // }
 }
