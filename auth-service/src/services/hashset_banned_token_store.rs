@@ -26,8 +26,8 @@ impl BannedTokenStore for HashsetBannedTokenStore {
         }
     }
 
-    async fn get_token(&self, token: String) -> Result<(), BannedTokenStoreError> {
-        match self.tokens.get(&token) {
+    async fn get_token(&self, token: &str) -> Result<(), BannedTokenStoreError> {
+        match self.tokens.get(token) {
             Some(_) => Ok(()),
             None => Err(BannedTokenStoreError::TokenNotFound),
         }

@@ -19,7 +19,7 @@ pub enum UserStoreError {
 #[async_trait::async_trait]
 pub trait BannedTokenStore {
     async fn store_token(&mut self, token: String) -> Result<(), BannedTokenStoreError>;
-    async fn get_token(&self, token: String) -> Result<(), BannedTokenStoreError>;
+    async fn get_token(&self, token: &str) -> Result<(), BannedTokenStoreError>;
 }
 
 #[derive(Debug, PartialEq)]
