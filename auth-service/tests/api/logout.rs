@@ -1,7 +1,4 @@
-use auth_service::{
-    domain::email::Email,
-    utils::{auth::generate_auth_cookie, constants::JWT_COOKIE_NAME},
-};
+use auth_service::utils::constants::JWT_COOKIE_NAME;
 use reqwest::Url;
 
 use crate::helpers::{get_random_email, TestApp};
