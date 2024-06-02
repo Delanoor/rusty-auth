@@ -2,17 +2,18 @@ use std::collections::HashSet;
 
 use crate::domain::data_stores::{BannedTokenStore, BannedTokenStoreError};
 
+#[derive(Default)]
 pub struct HashsetBannedTokenStore {
     tokens: HashSet<String>,
 }
 
-impl Default for HashsetBannedTokenStore {
-    fn default() -> Self {
-        Self {
-            tokens: HashSet::new(),
-        }
-    }
-}
+// impl Default for HashsetBannedTokenStore {
+//     fn default() -> Self {
+//         Self {
+//             tokens: HashSet::new(),
+//         }
+//     }
+// }
 
 #[async_trait::async_trait]
 impl BannedTokenStore for HashsetBannedTokenStore {
@@ -31,5 +32,31 @@ impl BannedTokenStore for HashsetBannedTokenStore {
             Some(_) => Ok(()),
             None => Err(BannedTokenStoreError::TokenNotFound),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_add_token() {
+        let mut store = HashsetBannedTokenStore::default();
+        let token = "test".to_string();
+
+        let result = store.store_token(token.clone()).await;
+
+        assert!(result.is_ok());
+        assert!(store.get_token(&token).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_contains_token() {
+        let mut store = HashsetBannedTokenStore::default();
+        let token = "test".to_string();
+        store.tokens.insert(token.clone());
+
+        let result = store.get_token(&token).await;
+        assert!(result.is_ok());
     }
 }
