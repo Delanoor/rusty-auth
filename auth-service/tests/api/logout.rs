@@ -31,16 +31,6 @@ async fn should_return_200_if_valid_jwt_cookie() {
         .expect("No auth cookie found");
     assert!(!cookie.value().is_empty());
 
-    // let cookie = generate_auth_cookie(&email).unwrap();
-    // app.cookie_jar.add_cookie_str(
-    //     &format!(
-    //         "{}={}; HttpOnly; SameSite=Lax; Secure; Path=/",
-    //         JWT_COOKIE_NAME,
-    //         cookie.value()
-    //     ),
-    //     &Url::parse(&app.address).expect("Failed to parse URL"),
-    // );
-
     let token = cookie.value();
     let logout_response = app.post_logout().await;
     assert_eq!(logout_response.status().as_u16(), 200);
