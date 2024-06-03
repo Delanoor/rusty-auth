@@ -1,12 +1,10 @@
-use std::borrow::BorrowMut;
-
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 
 use axum_extra::extract::CookieJar;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    app_state::{self, AppState},
+    app_state::AppState,
     domain::{
         data_stores::{LoginAttemptId, TwoFACode},
         email::Email,
@@ -47,12 +45,6 @@ pub async fn login(
         Err(_) => return (jar, Err(AuthAPIError::IncorrectCredentials)),
     };
 
-    // let auth_cookie = match generate_auth_cookie(&user.email) {
-    //     Ok(cookie) => cookie,
-    //     Err(_) => return (jar, Err(AuthAPIError::UnexpectedError)),
-    // };
-    // // let updated_jar = jar.add(auth_cookie);
-
     match user.requires_2fa {
         true => handle_2fa(&user.email, &state, jar).await,
         false => handle_no_2fa(&user.email, jar).await,
@@ -73,16 +65,25 @@ async fn handle_2fa(
     let mut two_fa_code_store = state.two_fa_code_store.write().await;
 
     if two_fa_code_store
-        .add_code(email.clone(), login_attempt_id.clone(), two_fa_code)
+        .add_code(email.clone(), login_attempt_id.clone(), two_fa_code.clone())
         .await
         .is_err()
     {
         return (jar, Err(AuthAPIError::UnexpectedError));
     };
 
-    let response = Json(LoginResponse::TwoFactorAuth(TwoFactorAuthResponse {
+    let email_client = state.email_client.read().await;
+    if email_client
+        .send_email(email, "2FA Code", two_fa_code.as_ref())
+        .await
+        .is_err()
+    {
+        return (jar, Err(AuthAPIError::UnexpectedError));
+    };
+
+    let response: Json<LoginResponse> = Json(LoginResponse::TwoFactorAuth(TwoFactorAuthResponse {
         message: "2FA required".to_owned(),
-        login_attempt_id: String::from(login_attempt_id.as_ref()),
+        login_attempt_id: login_attempt_id.as_ref().to_owned(),
     }));
     (jar, Ok((StatusCode::PARTIAL_CONTENT, response)))
 }
@@ -106,7 +107,7 @@ async fn handle_no_2fa(
     )
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum LoginResponse {
     RegularAuth,

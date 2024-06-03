@@ -17,6 +17,8 @@ services:
       - 80:80
     volumes:
       - ./nginx/local_templates:/etc/nginx/templates
+    environment:
+      BASE_PATH: http://localhost
 
   certbot:
     entrypoint: ["echo", "certbot disabled"]

@@ -3,10 +3,7 @@ use chrono::Utc;
 use jsonwebtoken::{decode, encode, errors::ErrorKind, DecodingKey, EncodingKey, Validation};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    app_state::TokenStoreType,
-    domain::{data_stores::BannedTokenStore, email::Email, AuthAPIError},
-};
+use crate::{app_state::TokenStoreType, domain::email::Email};
 
 use super::constants::{JWT_COOKIE_NAME, JWT_SECRET};
 
@@ -94,7 +91,6 @@ pub struct Claims {
 
 #[cfg(test)]
 mod tests {
-    use crate::app_state::AppState;
 
     use super::*;
 

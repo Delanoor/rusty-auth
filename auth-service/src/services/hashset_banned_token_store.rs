@@ -7,14 +7,6 @@ pub struct HashsetBannedTokenStore {
     tokens: HashSet<String>,
 }
 
-// impl Default for HashsetBannedTokenStore {
-//     fn default() -> Self {
-//         Self {
-//             tokens: HashSet::new(),
-//         }
-//     }
-// }
-
 #[async_trait::async_trait]
 impl BannedTokenStore for HashsetBannedTokenStore {
     async fn store_token(&mut self, token: String) -> Result<(), BannedTokenStoreError> {
