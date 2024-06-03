@@ -27,7 +27,7 @@ impl TwoFACodeStore for HashmapTwoFACodeStore {
     async fn remove_code(&mut self, email: &Email) -> Result<(), TwoFACodeStoreError> {
         match self.codes.get(email) {
             Some(_) => {
-                self.codes.remove(email);
+                let _ = self.codes.remove(email);
                 return Ok(());
             }
             None => return Err(TwoFACodeStoreError::LoginAttemptIdNotFound),

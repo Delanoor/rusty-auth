@@ -133,7 +133,7 @@ TwoFAButton.addEventListener("click", (e) => {
   const loginAttemptId = TwoFAForm.login_attempt_id.value;
   const TwoFACode = TwoFAForm.email_code.value;
 
-  fetch("/verify-2fa", {
+  fetch(`${window.location.origin}/auth/verify-2fa`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

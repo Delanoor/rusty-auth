@@ -1,8 +1,8 @@
 use auth_service::{
-    app_state::{AppState, TokenStoreType, TwoFACodeStoreType},
+    app_state::{AppState, EmailClientType, TokenStoreType, TwoFACodeStoreType},
     services::{
         hashmap_two_fa_code_store::HashmapTwoFACodeStore, hashmap_user_store::HashmapUserStore,
-        hashset_banned_token_store::HashsetBannedTokenStore,
+        hashset_banned_token_store::HashsetBannedTokenStore, mock_email_client::MockEmailClient,
     },
     utils::constants::test,
     Application,
@@ -16,19 +16,26 @@ use uuid::Uuid;
 pub struct TestApp {
     pub address: String,
     pub cookie_jar: Arc<Jar>,
-    pub http_client: reqwest::Client,
     pub token_store: TokenStoreType,
+    // pub token_store: Arc<RwLock<HashsetBannedTokenStore>>,
     pub two_fa_code_store: TwoFACodeStoreType,
+    pub email_client: EmailClientType,
+    pub http_client: reqwest::Client,
 }
 
 impl TestApp {
     pub async fn new() -> Self {
         let user_store = Arc::new(RwLock::new(HashmapUserStore::default()));
         let token_store = Arc::new(RwLock::new(HashsetBannedTokenStore::default()));
-        let two_fa_code_store =
-            Arc::new(tokio::sync::RwLock::new(HashmapTwoFACodeStore::default()));
+        let two_fa_code_store = Arc::new(RwLock::new(HashmapTwoFACodeStore::default()));
+        let email_client = Arc::new(RwLock::new(MockEmailClient));
 
-        let app_state = AppState::new(user_store, token_store.clone(), two_fa_code_store.clone());
+        let app_state = AppState::new(
+            user_store,
+            token_store.clone(),
+            two_fa_code_store.clone(),
+            email_client.clone(),
+        );
         let app = Application::build(app_state, test::APP_ADDRESS)
             .await
             .expect("Failed to build app");
@@ -51,6 +58,7 @@ impl TestApp {
             http_client,
             token_store,
             two_fa_code_store,
+            email_client,
         }
     }
 
@@ -69,13 +77,7 @@ impl TestApp {
             .await
             .expect(" -> StringFailed to execute request")
     }
-    pub async fn get_verify_2fa(&self) -> reqwest::Response {
-        self.http_client
-            .post(&format!("{}/verify-2fa", &self.address))
-            .send()
-            .await
-            .expect("Failed to execute request")
-    }
+
     pub async fn post_verify_token<Body: serde::Serialize>(
         &self,
         body: &Body,
@@ -106,6 +108,18 @@ impl TestApp {
     {
         self.http_client
             .post(&format!("{}/login", &self.address))
+            .json(body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
+
+    pub async fn post_verify_2fa<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        self.http_client
+            .post(&format!("{}/verify-2fa", &self.address))
             .json(body)
             .send()
             .await
