@@ -1,0 +1,19 @@
+syntax = "proto3";
+package auth;
+
+
+service Auth {
+    rpc VerifyTwoFA (VerifyTwoFARequest) returns (VerifyTwoFAResponse);
+}
+
+
+message VerifyTwoFARequest {
+    string loginAttemptId = 1;
+    string twoFACode = 2;
+}
+
+
+message VerifyTwoFAResponse {
+    bool success = 1;
+    string message = 2;
+}
