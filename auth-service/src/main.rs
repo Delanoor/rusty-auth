@@ -18,6 +18,7 @@ async fn main() {
     let email_client = Arc::new(RwLock::new(MockEmailClient));
 
     let app_state = AppState::new(user_store, token_store, two_fa_code_store, email_client);
+
     let app = Application::build(app_state, prod::APP_ADDRESS)
         .await
         .expect("Failed to build application");

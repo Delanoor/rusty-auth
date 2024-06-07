@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use app_state::AppState;
 use auth::{auth_server::AuthServer, VerifyTokenRequest, VerifyTokenResponse};
 use axum::{
@@ -8,11 +10,13 @@ use axum::{
     Json, Router,
 };
 use domain::error::AuthAPIError;
-use serde::{Deserialize, Serialize};
-use tokio::net::TcpListener;
-use tonic::{transport::Server, Request};
 
-use std::{error::Error, sync::Arc};
+use serde::{Deserialize, Serialize};
+
+use tonic::{
+    transport::{AxumRouter, Server},
+    Request,
+};
 
 use utils::constants::env::{BASE_PATH, DROPLET_IP};
 
@@ -20,12 +24,10 @@ use tower_http::{cors::CorsLayer, services::ServeDir};
 
 use tonic::{Response as TonicResponse, Status};
 
-pub struct Application {
-    // axum_server: Serve<Router, Router>,
-    pub address: String,
-}
-
 pub mod app_state;
+
+pub use auth::auth_server::Auth;
+
 pub mod domain;
 pub mod services;
 pub mod utils;
@@ -37,12 +39,12 @@ pub mod auth {
     tonic::include_proto!("auth");
 }
 
-pub use auth::auth_server::Auth;
-
-use tokio_stream::wrappers::TcpListenerStream;
-
+pub struct Application {
+    server: Serve<Router, Router>,
+    grpc_server: AxumRouter,
+    pub address: String,
+}
 pub struct MyAuthService {}
-
 #[tonic::async_trait]
 impl Auth for MyAuthService {
     async fn verify_token(
@@ -50,7 +52,7 @@ impl Auth for MyAuthService {
         request: Request<VerifyTokenRequest>,
     ) -> Result<TonicResponse<VerifyTokenResponse>, Status> {
         let req = request.into_inner();
-        dbg!(req);
+        // dbg!(req);
 
         let response = VerifyTokenResponse {
             success: true,
@@ -84,49 +86,53 @@ impl Application {
             .with_state(app_state)
             .layer(cors);
 
-        // let listener = tokio::net::TcpListener::bind(address).await?;
-        // let address = listener.local_addr()?.to_string();
+        let listener = tokio::net::TcpListener::bind(address).await?;
 
-        // let axum_server = axum::serve(listener, router);
-        // let grpc_server = tonic::transport::Server::builder()
+        let address = listener.local_addr()?.to_string();
+        // let addr = "[::0]:50051".parse()?;
+        // let grpc_listener = TcpListener::bind(addr).await?;
+
+        // let grpc_router = tonic::transport::Server::builder()
         //     .add_service(AuthServer::new(MyAuthService {}))
-        //     .serve(address.parse()?)
-        //     .await?;
+        //     .serve(addr);
 
-        let http_listener = TcpListener::bind(address).await?;
-        let grpc_listener = TcpListener::bind("127.0.0.1:50051").await?;
+        let server = axum::serve(listener, router);
 
-        let http_address = http_listener.local_addr()?.to_string();
-        let grpc_address = grpc_listener.local_addr()?.to_string();
-
-        tokio::spawn(async move {
-            axum::serve(http_listener, router).await.unwrap();
-        });
-
-        let grpc_stream = TcpListenerStream::new(grpc_listener);
-
-        tokio::spawn(async move {
-            Server::builder()
-                .add_service(AuthServer::new(MyAuthService {}))
-                .serve_with_incoming(grpc_stream)
-                .await
-                .unwrap();
-        });
+        let grpc_server = Server::builder()
+            .add_service(AuthServer::new(MyAuthService {}))
+            .into_router();
 
         Ok(Application {
-            address: http_address,
+            server,
+            grpc_server,
+            address,
         })
 
-        // Ok(Application {
-        //     axum_server,
-        //     address,
-        // })
+        // let http_listener = TcpListener::bind(address).await?;
+
+        // let http_address = http_listener.local_addr()?.to_string();
+        // let axum_server = axum::serve(http_listener, router);
+
+        // let grpc_stream = TcpListenerStream::new(grpc_listener);
+
+        // tokio::spawn(async move {
+        //     Server::builder()
+        //         .add_service(AuthServer::new(MyAuthService {}))
+        //         .serve_with_incoming(grpc_stream)
+        //         .await
+        //         .unwrap();
+        // });
     }
 
     pub async fn run(self) -> Result<(), std::io::Error> {
         println!("listening on {}", &self.address);
-        // self.axum_server.await
-        Ok(())
+
+        self.server.await
+        // tokio::select! {
+        //     result = self.server.await => result?,
+        //     result = self.grpc_server.serve => result?,
+        // }
+        // Ok(())
     }
 }
 

@@ -27,6 +27,7 @@ pub const JWT_COOKIE_NAME: &str = "jwt";
 
 pub mod prod {
     pub const APP_ADDRESS: &str = "0.0.0.0:3000";
+    pub const GRPC_ADDRESS: &str = "0.0.0.0:50051";
 }
 
 pub mod test {
