@@ -23,6 +23,7 @@ services:
       BASE_PATH: ${BASE_PATH}
     ports:
       - 3000
+      - 50051:50051
     networks:
       - cert-network
 
