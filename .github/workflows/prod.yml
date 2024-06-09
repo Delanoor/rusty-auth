@@ -9,7 +9,6 @@ on:
 env:
   JWT_SECRET: ${{ secrets.JWT_SECRET }}
   BASE_PATH: ${{ vars.BASE_PATH }}
-  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
   SQLX_OFFLINE: true
 
 jobs:
