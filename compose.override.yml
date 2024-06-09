@@ -11,6 +11,7 @@ services:
       context: ./auth-service # specify directory where local Dockerfile is located
     environment:
       BASE_PATH: http://localhost
+      JWT_SECRET: 5IutT0CMwhHTlSjRFNY4JY52ZYVc3tNh5GQZ6kh62Eg=
   reverse-proxy:
     restart: "unless-stopped"
     ports:

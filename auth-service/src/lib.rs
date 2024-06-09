@@ -15,8 +15,7 @@ use domain::error::AuthAPIError;
 
 use serde::{Deserialize, Serialize};
 
-use services::hashset_banned_token_store::HashsetBannedTokenStore;
-use tokio::{net::TcpListener, sync::RwLock};
+use tokio::net::TcpListener;
 use tokio_stream::wrappers::TcpListenerStream;
 use tonic::{transport::Server, Request};
 
@@ -74,7 +73,10 @@ impl Auth for MyAuthService {
 }
 
 impl Application {
-    pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> {
+    pub async fn build(
+        app_state: AppState,
+        address: &str,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let token_store = app_state.token_store.clone();
 
         let droplet_ip = DROPLET_IP;
@@ -116,19 +118,21 @@ impl Application {
             }))
             .serve_with_incoming(grpc_stream);
 
-        // Spawning both servers
+        // let server_future = async move {
+        //     tokio::spawn(http_server);
+        //     tokio::spawn(grpc_server);
+        // };
         tokio::spawn(http_server);
         tokio::spawn(grpc_server);
 
-        // Ok(Application { server, address })
         Ok(Application { address })
     }
 
     pub async fn run(self) -> Result<(), std::io::Error> {
         println!("listening on {}", &self.address);
         tokio::signal::ctrl_c().await?;
+        // self.server_future.await;
         Ok(())
-        // self.server.await
     }
 }
 

@@ -1,6 +1,6 @@
-use std::env;
-
 use askama::Template;
+use auth::auth_client::AuthClient;
+use auth::VerifyTokenRequest;
 use axum::{
     http::StatusCode,
     response::{Html, IntoResponse},
@@ -9,7 +9,13 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use serde::Serialize;
+use std::env;
+use tonic::Request;
 use tower_http::services::ServeDir;
+
+mod auth {
+    tonic::include_proto!("auth");
+}
 
 #[tokio::main]
 async fn main() {
@@ -54,31 +60,28 @@ async fn protected(jar: CookieJar) -> impl IntoResponse {
         }
     };
 
-    let api_client = reqwest::Client::builder().build().unwrap();
+    let auth_hostname = env::var("AUTH_SERVICE_HOST_NAME").unwrap_or("auth-service".to_owned());
+    let url = format!("http://{}:50051", auth_hostname);
 
-    let verify_token_body = serde_json::json!({
-        "token": &jwt_cookie.value(),
+    let mut client = AuthClient::connect(url).await.unwrap();
+    let request = Request::new(VerifyTokenRequest {
+        token: jwt_cookie.value().to_string(),
     });
 
-    let auth_hostname = env::var("AUTH_SERVICE_HOST_NAME").unwrap_or("0.0.0.0".to_owned());
-    let url = format!("http://{}:3000/verify-token", auth_hostname);
-
-    let response = match api_client.post(&url).json(&verify_token_body).send().await {
-        Ok(response) => response,
+    let response = match client.verify_token(request).await {
+        Ok(response) => response.into_inner(),
         Err(_) => {
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
 
-    match response.status() {
-        reqwest::StatusCode::UNAUTHORIZED | reqwest::StatusCode::BAD_REQUEST => {
-            StatusCode::UNAUTHORIZED.into_response()
-        }
-        reqwest::StatusCode::OK => Json(ProtectedRouteResponse {
+    if response.success {
+        Json(ProtectedRouteResponse {
             img_url: "https://i.ibb.co/YP90j68/Light-Live-Bootcamp-Certificate.png".to_owned(),
         })
-        .into_response(),
-        _ => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        .into_response()
+    } else {
+        StatusCode::UNAUTHORIZED.into_response()
     }
 }
 

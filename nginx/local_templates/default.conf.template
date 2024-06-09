@@ -27,4 +27,18 @@ server {
   location /auth/assets {
     proxy_pass http://auth-service:${AUTH_SERVICE_PORT}/assets/;
   }
+
+   # gRPC proxy
+    location /grpc {
+        grpc_pass grpc://auth-service:50051;
+        error_page 502 = /error502grpc;
+    }
+
+    location = /error502grpc {
+        internal;
+        default_type application/grpc;
+        add_header grpc-status 14;
+        add_header content-length 0;
+        return 204;
+    }
 }
