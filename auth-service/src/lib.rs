@@ -8,6 +8,7 @@ use axum::{
 };
 use domain::error::AuthAPIError;
 use serde::{Deserialize, Serialize};
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::error::Error;
 use utils::constants::env::{BASE_PATH, DROPLET_IP};
 
@@ -89,4 +90,8 @@ impl IntoResponse for AuthAPIError {
 
         (status, body).into_response()
     }
+}
+
+pub async fn get_postgres_pool(url: &str) -> Result<PgPool, sqlx::Error> {
+    PgPoolOptions::new().max_connections(5).connect(url).await
 }
