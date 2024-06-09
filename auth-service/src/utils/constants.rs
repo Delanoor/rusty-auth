@@ -1,6 +1,10 @@
 use dotenvy::dotenv;
 use lazy_static::lazy_static;
-use std::env as std_env;
+use std::{env as std_env, sync::Once};
+
+lazy_static! {
+    static ref INIT: Once = Once::new();
+}
 
 // Define a lazily evaluated static
 lazy_static! {

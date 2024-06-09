@@ -2,6 +2,7 @@ use crate::domain::{
     data_stores::{BannedTokenStore, TwoFACodeStore, UserStore},
     EmailClient,
 };
+use axum::extract::FromRef;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 

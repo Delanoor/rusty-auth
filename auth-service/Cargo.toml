@@ -27,6 +27,11 @@ prost = "0.12.6"
 tonic = "0.11.0"
 tokio-stream = { version = "0.1.15", features = ["net"] }
 
+tower = { version = "0.4.13", features = ["full"] }
+futures = "0.3.30"
+axum_tonic = "0.2.0"
+
+
 
 [dev-dependencies]
 reqwest = { version = "0.12.4",default-features = false, features = ["json",  "cookies"] }

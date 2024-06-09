@@ -1,28 +1,33 @@
-use std::error::Error;
+use std::{error::Error, future::IntoFuture, sync::Arc};
+pub mod auth {
+    tonic::include_proto!("auth");
+}
 
-use app_state::AppState;
+use app_state::{AppState, TokenStoreType};
 use auth::{auth_server::AuthServer, VerifyTokenRequest, VerifyTokenResponse};
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::post,
-    serve::Serve,
     Json, Router,
 };
 use domain::error::AuthAPIError;
 
 use serde::{Deserialize, Serialize};
 
-use tonic::{
-    transport::{AxumRouter, Server},
-    Request,
-};
+use services::hashset_banned_token_store::HashsetBannedTokenStore;
+use tokio::{net::TcpListener, sync::RwLock};
+use tokio_stream::wrappers::TcpListenerStream;
+use tonic::{transport::Server, Request};
 
-use utils::constants::env::{BASE_PATH, DROPLET_IP};
+use utils::{
+    auth::validate_token,
+    constants::env::{BASE_PATH, DROPLET_IP},
+};
 
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
-use tonic::{Response as TonicResponse, Status};
+use tonic::Response as TonicResponse;
 
 pub mod app_state;
 
@@ -33,41 +38,50 @@ pub mod services;
 pub mod utils;
 
 pub mod routes;
-use routes::{login, logout, signup, verify_2fa, verify_token};
-
-pub mod auth {
-    tonic::include_proto!("auth");
-}
+use routes::{login, logout, signup, verify_2fa};
 
 pub struct Application {
-    server: Serve<Router, Router>,
-    grpc_server: AxumRouter,
+    // server: Serve<Router, Router>,
     pub address: String,
 }
-pub struct MyAuthService {}
+
+pub struct MyAuthService {
+    token_store: TokenStoreType,
+}
+
 #[tonic::async_trait]
 impl Auth for MyAuthService {
     async fn verify_token(
         &self,
         request: Request<VerifyTokenRequest>,
-    ) -> Result<TonicResponse<VerifyTokenResponse>, Status> {
+    ) -> Result<TonicResponse<VerifyTokenResponse>, tonic::Status> {
         let req = request.into_inner();
-        // dbg!(req);
 
-        let response = VerifyTokenResponse {
-            success: true,
-            // message: "2FA verified successfully".into(),
-        };
-        return Ok(TonicResponse::new(response));
+        println!("grpc: {:?}", req);
+
+        let token = req.token;
+        match validate_token(self.token_store.clone(), &token).await {
+            Ok(_) => {
+                let response: VerifyTokenResponse = VerifyTokenResponse {
+                    success: true,
+                    message: "2FA verified successfully".to_string(),
+                };
+                Ok(TonicResponse::new(response))
+            }
+            Err(e) => Err(tonic::Status::from_error(e.into())),
+        }
     }
 }
 
 impl Application {
     pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> {
+        let token_store = app_state.token_store.clone();
+
         let droplet_ip = DROPLET_IP;
         let base_path = BASE_PATH;
         let allowed_origins = [
             "http://localhost:8000".parse()?,
+            "http://localhost:3001".parse()?,
             format!("https://{}:8000", droplet_ip).parse()?,
             format!("{}/app", base_path).parse()?,
         ];
@@ -82,57 +96,39 @@ impl Application {
             .route("/login", post(login))
             .route("/logout", post(logout))
             .route("/verify-2fa", post(verify_2fa))
-            .route("/verify-token", post(verify_token))
+            // .route("/verify-token", post(verify_token))
             .with_state(app_state)
             .layer(cors);
 
-        let listener = tokio::net::TcpListener::bind(address).await?;
+        let listener: tokio::net::TcpListener = tokio::net::TcpListener::bind(address).await?;
 
         let address = listener.local_addr()?.to_string();
-        // let addr = "[::0]:50051".parse()?;
-        // let grpc_listener = TcpListener::bind(addr).await?;
 
-        // let grpc_router = tonic::transport::Server::builder()
-        //     .add_service(AuthServer::new(MyAuthService {}))
-        //     .serve(addr);
+        let http_server = axum::serve(listener, router.into_make_service()).into_future();
 
-        let server = axum::serve(listener, router);
+        // Setting up and spawning gRPC server
+        let grpc_listener = TcpListener::bind("0.0.0.0:50051").await?;
+        let grpc_stream = TcpListenerStream::new(grpc_listener);
 
         let grpc_server = Server::builder()
-            .add_service(AuthServer::new(MyAuthService {}))
-            .into_router();
+            .add_service(AuthServer::new(MyAuthService {
+                token_store: token_store.clone(),
+            }))
+            .serve_with_incoming(grpc_stream);
 
-        Ok(Application {
-            server,
-            grpc_server,
-            address,
-        })
+        // Spawning both servers
+        tokio::spawn(http_server);
+        tokio::spawn(grpc_server);
 
-        // let http_listener = TcpListener::bind(address).await?;
-
-        // let http_address = http_listener.local_addr()?.to_string();
-        // let axum_server = axum::serve(http_listener, router);
-
-        // let grpc_stream = TcpListenerStream::new(grpc_listener);
-
-        // tokio::spawn(async move {
-        //     Server::builder()
-        //         .add_service(AuthServer::new(MyAuthService {}))
-        //         .serve_with_incoming(grpc_stream)
-        //         .await
-        //         .unwrap();
-        // });
+        // Ok(Application { server, address })
+        Ok(Application { address })
     }
 
     pub async fn run(self) -> Result<(), std::io::Error> {
         println!("listening on {}", &self.address);
-
-        self.server.await
-        // tokio::select! {
-        //     result = self.server.await => result?,
-        //     result = self.grpc_server.serve => result?,
-        // }
-        // Ok(())
+        tokio::signal::ctrl_c().await?;
+        Ok(())
+        // self.server.await
     }
 }
 

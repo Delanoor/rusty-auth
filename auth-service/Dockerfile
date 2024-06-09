@@ -2,7 +2,7 @@
 FROM rust:1.77-alpine AS chef
 USER root
 # Add cargo-chef to cache dependencies
-RUN apk add --no-cache musl-dev & cargo install cargo-chef
+RUN apk add --no-cache musl-dev protobuf-dev protoc & cargo install cargo-chef
 WORKDIR /app
 
 FROM chef AS planner
@@ -12,6 +12,10 @@ RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
+
+# Copy the proto files
+COPY ./proto /app/proto
+
 # Build dependencies - this is the caching Docker layer!
 RUN cargo chef cook --release --recipe-path recipe.json
 # Build application
