@@ -1,12 +1,11 @@
 use std::error::Error;
 
 use argon2::{
-    password_hash::{Salt, SaltString},
-    Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version,
+    password_hash::SaltString, Algorithm, Argon2, Params, PasswordHash, PasswordHasher,
+    PasswordVerifier, Version,
 };
 
 use sqlx::PgPool;
-use tokio::task;
 
 use crate::domain::{
     data_stores::{UserStore, UserStoreError},
@@ -75,25 +74,32 @@ impl UserStore for PostgresUserStore {
     ) -> Result<(), UserStoreError> {
         let user = self.get_user(email).await?;
 
-        verify_password_hash(user.password.as_ref(), password.as_ref())
-            .map_err(|_| UserStoreError::InvalidCredentials)?;
+        verify_password_hash(user.password.as_ref(), password.as_ref()).await;
 
         Ok(())
     }
 }
 
-fn verify_password_hash(
+async fn verify_password_hash(
     expected_password_hash: &str,
     password_candidate: &str,
 ) -> Result<(), Box<dyn Error>> {
-    let expected_password_hash: PasswordHash<'_> = PasswordHash::new(expected_password_hash)?;
-    Argon2::default()
-        .verify_password(password_candidate.as_bytes(), &expected_password_hash)
-        .map_err(|e| e.into())
+    let expected_password_hash = expected_password_hash.to_string();
+    let password_candidate = password_candidate.to_string();
+
+    let res = tokio::task::spawn_blocking(move || {
+        let expected_password_hash = PasswordHash::new(&expected_password_hash).map_err(|e| e)?;
+        Argon2::default()
+            .verify_password(password_candidate.as_bytes(), &expected_password_hash)
+            .map_err(|e| e)
+    })
+    .await??;
+
+    Ok(res)
 }
 
 async fn compute_password_hash(password: &str) -> Result<String, Box<dyn Error>> {
-    let password = password.to_string();
+    let password = password.to_owned();
     let res = tokio::task::spawn_blocking(move || {
         let salt: SaltString = SaltString::generate(&mut rand::thread_rng());
         let argon2 = Argon2::new(
