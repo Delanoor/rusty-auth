@@ -16,7 +16,9 @@ use tokio::sync::RwLock;
 
 #[tokio::main]
 async fn main() {
-    let pg_pool = configure_postgresql().await;
+    let pg_pool = configure_postgresql()
+        .await
+        .expect("Failed to configure PostgreSQL");
 
     let user_store = Arc::new(RwLock::new(PostgresUserStore::new(pg_pool)));
     let token_store = Arc::new(RwLock::new(HashsetBannedTokenStore::default()));
@@ -31,10 +33,11 @@ async fn main() {
     app.run().await.expect("Failed to run application");
 }
 
-async fn configure_postgresql() -> PgPool {
-    let pg_pool = get_postgres_pool(&DATABASE_URL)
-        .await
-        .expect("Failed to create Postgres connection pool!");
+async fn configure_postgresql() -> Result<PgPool, Box<dyn std::error::Error>> {
+    let pg_pool = get_postgres_pool(&DATABASE_URL).await.map_err(|e| {
+        eprintln!("Failed to create Postgres connection pool: {:?}", e);
+        e
+    })?;
 
     // run db migrations against our test database
     sqlx::migrate!()
@@ -42,5 +45,5 @@ async fn configure_postgresql() -> PgPool {
         .await
         .expect("Failed to run migrations");
 
-    pg_pool
+    Ok(pg_pool)
 }
