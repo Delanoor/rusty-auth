@@ -4,21 +4,37 @@ services:
     build:
       context: ./app-service # specify directory where local Dockerfile is located
     environment:
-      BASE_PATH: http://localhost
+      AUTH_SERVICE_IP: ${AUTH_SERVICE_IP}
+      BASE_PATH: ${BASE_PATH}
+    ports:
+      - "8000:8000"
 
   auth-service:
     build:
       context: ./auth-service # specify directory where local Dockerfile is located
     environment:
-      BASE_PATH: http://localhost
+      JWT_SECRET: ${JWT_SECRET}
+      BASE_PATH: ${BASE_PATH}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_URL: ${DATABASE_URL}
+    ports:
+      - "3000:3000"
+
   reverse-proxy:
     restart: "unless-stopped"
     ports:
-      - 80:80
+      - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/local_templates:/etc/nginx/templates
     environment:
-      BASE_PATH: http://localhost
+      BASE_PATH: ${BASE_PATH}
+      NGINX_HOST: localhost
+      NGINX_PORT: 80
+      NGINX_HTTPS_PORT: 443
+      AUTH_SERVICE_PORT: 3000
+      APP_SERVICE_PORT: 8000
+      DOMAIN: rustyauth.com
 
   certbot:
     entrypoint: ["echo", "certbot disabled"]
