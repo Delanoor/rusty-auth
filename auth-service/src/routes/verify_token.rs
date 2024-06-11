@@ -1,4 +1,4 @@
-use axum::{extract::State, response::IntoResponse, Json};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 
 use crate::{app_state::AppState, domain::AuthAPIError, utils::auth::validate_token};
 
@@ -14,8 +14,8 @@ pub async fn verify_token(
     Json(request): Json<VerifyTokenRequest>,
 ) -> Result<impl IntoResponse, AuthAPIError> {
     let token = request.token;
-    match validate_token(state.token_store, &token).await {
-        Ok(_) => Ok(()),
+    match validate_token(state.token_store.clone(), &token).await {
+        Ok(_) => Ok(StatusCode::OK),
         Err(_) => Err(AuthAPIError::InvalidToken),
     }
 }

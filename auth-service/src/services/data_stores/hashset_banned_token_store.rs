@@ -19,9 +19,9 @@ impl BannedTokenStore for HashsetBannedTokenStore {
         }
     }
 
-    async fn get_token(&self, token: &str) -> Result<(), BannedTokenStoreError> {
+    async fn contains_token(&self, token: &str) -> Result<bool, BannedTokenStoreError> {
         match self.tokens.get(token) {
-            Some(_) => Ok(()),
+            Some(_) => Ok(true),
             None => Err(BannedTokenStoreError::TokenNotFound),
         }
     }
@@ -39,7 +39,7 @@ mod tests {
         let result = store.store_token(token.clone()).await;
 
         assert!(result.is_ok());
-        assert!(store.get_token(&token).await.is_ok());
+        assert!(store.contains_token(&token).await.is_ok());
     }
 
     #[tokio::test]
@@ -48,7 +48,7 @@ mod tests {
         let token = "test".to_string();
         store.tokens.insert(token.clone());
 
-        let result = store.get_token(&token).await;
+        let result = store.contains_token(&token).await;
         assert!(result.is_ok());
     }
 }

@@ -16,6 +16,7 @@ pub struct AppState {
     pub token_store: TokenStoreType,
     pub two_fa_code_store: TwoFACodeStoreType,
     pub email_client: EmailClientType,
+    pub clean_up_called: bool,
 }
 
 impl AppState {
@@ -24,12 +25,23 @@ impl AppState {
         token_store: TokenStoreType,
         two_fa_code_store: TwoFACodeStoreType,
         email_client: EmailClientType,
+        clean_up_called: bool,
     ) -> Self {
         Self {
             user_store,
             token_store,
             two_fa_code_store,
             email_client,
+            clean_up_called,
+        }
+    }
+}
+
+impl Drop for AppState {
+    fn drop(&mut self) {
+        if !self.clean_up_called {
+            // panic!("Db not cleaned up");
+            // println!("+++++++++++++++++++++++++{}", self.clean_up_called)
         }
     }
 }

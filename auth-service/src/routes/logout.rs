@@ -18,18 +18,26 @@ pub async fn logout(
         None => return (jar, Err(AuthAPIError::MissingToken)),
     };
 
+    // Validate token
     let token = cookie.value().to_owned();
+    let _ = match validate_token(state.token_store.clone(), &token).await {
+        Ok(claims) => claims,
+        Err(_) => return (jar, Err(AuthAPIError::InvalidToken)),
+    };
 
-    let validate_response = validate_token(state.token_store.clone(), &token).await;
-
-    if validate_response.is_err() {
-        return (jar, Err(AuthAPIError::InvalidToken));
+    // Add token to banned list
+    if state
+        .token_store
+        .write()
+        .await
+        .store_token(token)
+        .await
+        .is_err()
+    {
+        return (jar, Err(AuthAPIError::UnexpectedError));
     }
-    let mut token_store = state.token_store.write().await;
 
     let jar = jar.remove(Cookie::from(JWT_COOKIE_NAME));
-    match token_store.store_token(token).await {
-        Ok(_) => (jar, Ok(StatusCode::OK)),
-        Err(_) => (jar, Err(AuthAPIError::UnexpectedError)),
-    }
+
+    (jar, Ok(StatusCode::OK))
 }

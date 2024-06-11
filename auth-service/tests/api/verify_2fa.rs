@@ -46,7 +46,9 @@ async fn should_return_200_if_correct_code() {
         .find(|cookie| cookie.name() == JWT_COOKIE_NAME)
         .expect("No auth cookie found");
 
-    assert!(!cookie.value().is_empty())
+    assert!(!cookie.value().is_empty());
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
@@ -78,6 +80,8 @@ async fn should_return_400_if_invalid_input() {
 
         assert_eq!(response.status().as_u16(), 400);
     }
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
@@ -116,6 +120,8 @@ async fn should_return_401_if_incorrect_credentials() {
     let verify_two_fa_response = app.post_verify_2fa(&verify_two_fa_body).await;
 
     assert_eq!(verify_two_fa_response.status().as_u16(), 401);
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
@@ -164,6 +170,8 @@ async fn should_return_401_if_same_code_twice() {
 
     let second_verify_two_fa_response = app.post_verify_2fa(&verify_two_fa_body).await;
     assert_eq!(second_verify_two_fa_response.status().as_u16(), 401);
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
@@ -204,6 +212,8 @@ async fn should_return_401_if_old_code() {
     let verify_two_fa_response = app.post_verify_2fa(&verify_two_fa_body).await;
 
     assert_eq!(verify_two_fa_response.status().as_u16(), 401);
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
@@ -231,4 +241,6 @@ async fn should_return_422_if_malformed_input() {
         let response = app.post_verify_2fa(input).await;
         assert_eq!(response.status().as_u16(), 422);
     }
+
+    app.clean_up().await;
 }
