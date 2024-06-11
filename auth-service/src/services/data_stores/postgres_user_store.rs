@@ -5,6 +5,7 @@ use argon2::{
     PasswordVerifier, Version,
 };
 
+use serde::Deserialize;
 use sqlx::PgPool;
 
 use crate::domain::{
@@ -21,6 +22,13 @@ impl PostgresUserStore {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
+}
+
+#[derive(sqlx::FromRow, Deserialize)]
+pub struct PostgresUser {
+    email: String,
+    password_hash: String,
+    requires_2fa: bool,
 }
 
 #[async_trait::async_trait]
@@ -46,7 +54,8 @@ impl UserStore for PostgresUserStore {
         Ok(())
     }
     async fn get_user(&self, email: &Email) -> Result<User, UserStoreError> {
-        let query = sqlx::query!(
+        let query = sqlx::query_as!(
+            PostgresUser,
             r#"
                 select email, password_hash, requires_2fa
                 from users

@@ -42,6 +42,14 @@ services:
     networks:
       - cert-network
 
+  redis:
+    image: redis:7.0-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - cert-network
+
   reverse-proxy:
     container_name: nginx
     image: nginx:latest
