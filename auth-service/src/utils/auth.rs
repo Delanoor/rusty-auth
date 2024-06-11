@@ -60,18 +60,28 @@ pub async fn validate_token(
     token_store: TokenStoreType,
     token: &str,
 ) -> Result<Claims, jsonwebtoken::errors::Error> {
-    let token_store = token_store.read().await;
+    let banned_token_store = token_store.read().await;
 
-    if token_store.get_token(token).await.is_ok() {
-        return Err(jsonwebtoken::errors::Error::from(ErrorKind::InvalidToken));
+    match banned_token_store.contains_token(token).await {
+        Ok(value) => {
+            if value == true {
+                println!("This token is banned");
+                return Err(jsonwebtoken::errors::Error::from(
+                    jsonwebtoken::errors::ErrorKind::InvalidToken,
+                ));
+            } else {
+                let claims = decode::<Claims>(
+                    token,
+                    &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
+                    &Validation::default(),
+                )
+                .map(|data| data.claims);
+
+                return claims;
+            }
+        }
+        Err(_) => return Err(jsonwebtoken::errors::Error::from(ErrorKind::InvalidToken)),
     }
-
-    decode::<Claims>(
-        token,
-        &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
-        &Validation::default(),
-    )
-    .map(|data| data.claims)
 }
 
 // Create JWT auth token by encoding claims using the JWT secret
