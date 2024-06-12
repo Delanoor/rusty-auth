@@ -32,8 +32,9 @@ impl Application {
     pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> {
         let droplet_ip = DROPLET_IP;
         let base_path = BASE_PATH;
-        let allowed_origins = [
+        let allowed_origins: [axum::http::HeaderValue; 4] = [
             "http://localhost:8000".parse()?,
+            "http://localhost:3001".parse()?,
             format!("https://{}:8000", droplet_ip).parse()?,
             format!("{}/app", base_path).parse()?,
         ];
