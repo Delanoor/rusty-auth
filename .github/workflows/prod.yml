@@ -8,7 +8,7 @@ on:
 
 env:
   BASE_PATH: ${{ vars.BASE_PATH }}
-  NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+  NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
 
 jobs:
   build:
@@ -19,14 +19,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      # Install bun
-      - name: Install bun
-        run: |
-          curl -fsSL https://bun.sh/install | bash
-          echo 'export BUN_INSTALL="$HOME/.bun"' >> $GITHUB_ENV
-          echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> $GITHUB_ENV
-          source $HOME/.bashrc
-          source $GITHUB_ENV
+      # Install Bun
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: "latest"
 
       # Install frontend dependencies
       - name: Install frontend dependencies
@@ -64,7 +61,7 @@ jobs:
       BASE_PATH: ${{ vars.BASE_PATH }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
 
     steps:
       - name: Install sshpass
