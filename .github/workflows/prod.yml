@@ -21,13 +21,11 @@ jobs:
 
       # Install bun
       - name: Install bun
-        run: curl -fsSL https://bun.sh/install | bash
-
-      # Add bun to path
-      - name: Add bun to path
-        run: echo 'export BUN_INSTALL="$HOME/.bun"' >> $HOME/.bashrc
-        run: echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> $HOME/.bashrc
-        run: source $HOME/.bashrc
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          echo 'export BUN_INSTALL="$HOME/.bun"' >> $HOME/.bashrc
+          echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> $HOME/.bashrc
+          source $HOME/.bashrc
 
       # Install frontend dependencies
       - name: Install frontend dependencies
