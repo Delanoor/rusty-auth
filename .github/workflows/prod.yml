@@ -89,6 +89,10 @@ jobs:
       - name: Copy compose.yml to droplet
         run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no compose.yml  root@${{ vars.DROPLET_IP }}:~
 
+      - name: Copy Next.js build files to droplet
+        run: |
+          sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no -r ./frontend/.next root@${{ vars.DROPLET_IP }}:/var/www/html/
+
       - name: Copy proxy/templates to droplet
         run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -r -o StrictHostKeyChecking=no nginx root@${{ vars.DROPLET_IP }}:~
 
