@@ -1,11 +1,40 @@
 version: "3.9"
 services:
   app-service:
-    build:
-      context: ./app-service # specify directory where local Dockerfile is located
+    container_name: app-service
+    image: vinorelbine/rusty-next:latest
+    restart: "always"
+    environment:
+      NEXT_PUBLIC_API_URL: http://auth-service:3000
+    ports:
+      - "8000:8000"
+
   auth-service:
     build:
       context: ./auth-service # specify directory where local Dockerfile is located
-  nginx:
-    build:
-      context: ./nginx
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      BASE_PATH: ${BASE_PATH}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_URL: ${DATABASE_URL}
+    ports:
+      - "3000:3000"
+
+  reverse-proxy:
+    restart: "unless-stopped"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/local_templates:/etc/nginx/templates
+    environment:
+      BASE_PATH: ${BASE_PATH}
+      NGINX_HOST: localhost
+      NGINX_PORT: 80
+      NGINX_HTTPS_PORT: 443
+      AUTH_SERVICE_PORT: 3000
+      APP_SERVICE_PORT: 8000
+      DOMAIN: rustyauth.com
+
+  certbot:
+    entrypoint: ["echo", "certbot disabled"]
