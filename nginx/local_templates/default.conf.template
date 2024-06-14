@@ -1,0 +1,31 @@
+server {
+  listen ${NGINX_PORT};
+  listen [::]:${NGINX_PORT};
+  server_name localhost;
+
+  root /var/www/html;
+  index index.html index.htm index.nginx-debian.html;
+
+  location /auth/ {
+    proxy_pass http://auth-service:${AUTH_SERVICE_PORT}/;
+  }
+
+ 
+
+
+  location / {
+    proxy_pass http://app-service:${APP_SERVICE_PORT}/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+
+
+
+
+  # Serve static files for auth-service
+  location /auth/assets {
+    proxy_pass http://auth-service:${AUTH_SERVICE_PORT}/assets/;
+  }
+}

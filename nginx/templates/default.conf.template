@@ -4,18 +4,19 @@ server {
     listen [::]:${NGINX_PORT};
     server_name rustyauth.com www.rustyauth.com;
 
-    location ~ /.well-known/acme-challenge {
+    location /.well-known/acme-challenge {
         allow all;
         root /var/www/html;
     }
 
-  location / {
-    rewrite ^ https://$host$request_uri? permanent;
-  }
+    location / {
+    return 301 https://$host$request_uri;
+    }
+
 }
 
 
-    server {
+server {
         listen ${NGINX_HTTPS_PORT} ssl;
         listen [::]:${NGINX_HTTPS_PORT} ssl;
         server_name rustyauth.com www.rustyauth.com;

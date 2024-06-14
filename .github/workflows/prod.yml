@@ -19,42 +19,57 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-        # Install bun
-        # Install bun
-      - name: Install bun
+        # Cache dependencies to speed up build times
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            app-service/.cargo
+            app-service/target/
+            auth-service/.cargo
+            auth-service/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+
+      - name: Build and test app-service code
+        working-directory: ./app-service
         run: |
-          curl -fsSL https://bun.sh/install | bash
-          echo 'export BUN_INSTALL="$HOME/.bun"' >> $GITHUB_ENV
-          echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> $GITHUB_ENV
-          source $HOME/.bashrc
-          source $GITHUB_ENV
+          cargo build --verbose
+          cargo test --verbose
 
-      # Install frontend dependencies
-      - name: Install frontend dependencies
-        run: bun install
+      - name: Build and test auth-service code
+        working-directory: ./auth-service
+        run: |
+          cargo build --verbose
+          cargo test --verbose
 
-      # Build frontend
-      - name: Build frontend
-        run: bun run build
-
-      # Set up Docker Buildx for multi-platform builds
+        # Set up Docker Buildx for multi-platform builds
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Build and push Docker image
-      - name: Build and push Docker image
-        run: |
-          docker build -t vinorelbine/rusty-next .
-          docker tag vinorelbine/rusty-next:latest vinorelbine/rusty-next:${{ github.sha }}
-          docker push vinorelbine/rusty-next:latest
-          docker push vinorelbine/rusty-next:${{ github.sha }}
+      - name: Build and push Docker images
+        uses: docker/bake-action@v2.3.0
+        with:
+          push: true
+          files: |
+            compose.yml
+            compose.override.yml
+          set: |
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -66,26 +81,30 @@ jobs:
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
       - name: Install sshpass
         run: sudo apt-get install sshpass
 
-      - name: Copy docker-compose.yml to droplet
-        run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no docker-compose.yml root@${{ vars.DROPLET_IP }}:~
-
-      - name: Copy nginx-setup.conf
-        run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no nginx/local_templates.default.conf.template root@${{ vars.DROPLET_IP }}:/etc/nginx/templates/
+      - name: Copy compose.yml to droplet
+        run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no compose.yml root@${{ vars.DROPLET_IP }}:~
 
       - name: Deploy
         uses: appleboy/ssh-action@master
         with:
           host: ${{ vars.DROPLET_IP }}
-          envs: BASE_PATH, JWT_SECRET, DROPLET_IP, POSTGRES_PASSWORD
-
           username: root
           password: ${{ secrets.DROPLET_PASSWORD }}
           script: |
             cd ~
-
-            docker compose down
-            docker compose pull
-            docker compose up -d
+            export AUTH_SERVICE_IP=${{ vars.DROPLET_IP }}
+            docker-compose down
+            docker-compose pull
+            docker-compose up -d
