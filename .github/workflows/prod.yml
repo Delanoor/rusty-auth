@@ -90,7 +90,7 @@ jobs:
         run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no compose.yml  root@${{ vars.DROPLET_IP }}:~
 
       - name: Copy proxy/templates to droplet
-        run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -r -o StrictHostKeyChecking=no proxy root@${{ vars.DROPLET_IP }}:~
+        run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -r -o StrictHostKeyChecking=no nginx root@${{ vars.DROPLET_IP }}:~
 
       - name: Deploy
         uses: appleboy/ssh-action@master
