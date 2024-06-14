@@ -61,7 +61,6 @@ jobs:
           docker tag vinorelbine/rusty-next:latest vinorelbine/rusty-next:${{ github.sha }}
           docker push vinorelbine/rusty-next:latest
           docker push vinorelbine/rusty-next:${{ github.sha }}
-
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -72,10 +71,13 @@ jobs:
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
       NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+      NGINX_PORT: ${{ vars.NGINX_PORT }}
+      NGINX_HTTPS_PORT: ${{ vars.NGINX_HTTPS_PORT }}
+      APP_SERVICE_PORT: ${{ vars.APP_SERVICE_PORT }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout main code
+        uses: actions/checkout@v2
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v1
@@ -84,23 +86,18 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Install sshpass
-        run: sudo apt-get install sshpass
+        run: sudo apt-get install -y sshpass
 
       - name: Copy compose.yml to droplet
-        run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no compose.yml  root@${{ vars.DROPLET_IP }}:~
+        run: sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no docker-compose.yml root@${{ vars.DROPLET_IP }}:~
 
-      - name: Copy Next.js build files to droplet
-        run: |
-          sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no -r ./frontend/.next root@${{ vars.DROPLET_IP }}:/var/www/html/
+      - name: Copy Nginx configuration to droplet
+        run: sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no nginx/templates/default.conf root@${{ vars.DROPLET_IP }}:/etc/nginx/templates/default.conf
 
-      - name: Copy proxy/templates to droplet
-        run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -r -o StrictHostKeyChecking=no nginx root@${{ vars.DROPLET_IP }}:~
-
-      - name: Deploy
+      - name: Deploy application
         uses: appleboy/ssh-action@master
         with:
           host: ${{ vars.DROPLET_IP }}
-          envs: BASE_PATH, JWT_SECRET, DROPLET_IP, POSTGRES_PASSWORD, NEXT_PUBLIC_API_URL
           username: root
           password: ${{ secrets.DROPLET_PASSWORD }}
           script: |
