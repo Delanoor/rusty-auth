@@ -19,19 +19,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      # Install Node.js
-      - name: Install Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: "20"
+      # Install bun
+      - name: Install bun
+        run: curl -fsSL https://bun.sh/install | bash
+
+      # Add bun to path
+      - name: Add bun to path
+        run: echo 'export BUN_INSTALL="$HOME/.bun"' >> $HOME/.bashrc
+        run: echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> $HOME/.bashrc
+        run: source $HOME/.bashrc
 
       # Install frontend dependencies
       - name: Install frontend dependencies
-        run: npm install
+        run: bun install
 
       # Build frontend
       - name: Build frontend
-        run: npm run build
+        run: bun run build
 
       # Set up Docker Buildx for multi-platform builds
       - name: Set up Docker Buildx
@@ -51,7 +55,6 @@ jobs:
           docker tag vinorelbine/rusty-next:latest vinorelbine/rusty-next:${{ github.sha }}
           docker push vinorelbine/rusty-next:latest
           docker push vinorelbine/rusty-next:${{ github.sha }}
-
   deploy:
     needs: build
     runs-on: ubuntu-latest
