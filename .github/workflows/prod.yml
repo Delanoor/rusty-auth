@@ -90,7 +90,7 @@ jobs:
         run: sudo apt-get install -y sshpass
 
       - name: Copy compose.yml to droplet
-        run: sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no docker-compose.yml root@${{ vars.DROPLET_IP }}:~
+        run: sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no compose.yml root@${{ vars.DROPLET_IP }}:~
 
       - name: Copy Nginx configuration to droplet
         run: sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no nginx/templates/default.conf root@${{ vars.DROPLET_IP }}:/etc/nginx/templates/default.conf
