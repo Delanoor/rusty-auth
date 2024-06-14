@@ -16,7 +16,7 @@ jobs:
 
     steps:
       # Checkout the main repository code
-      - name: Checkout code
+      - name: Checkout main code
         uses: actions/checkout@v2
 
       # Clone the frontend repository
@@ -61,6 +61,7 @@ jobs:
           docker tag vinorelbine/rusty-next:latest vinorelbine/rusty-next:${{ github.sha }}
           docker push vinorelbine/rusty-next:latest
           docker push vinorelbine/rusty-next:${{ github.sha }}
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -93,6 +94,10 @@ jobs:
 
       - name: Copy Nginx configuration to droplet
         run: sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no nginx/templates/default.conf root@${{ vars.DROPLET_IP }}:/etc/nginx/templates/default.conf
+
+      - name: Copy Next.js build files to droplet
+        run: |
+          sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no -r ./frontend/.next root@${{ vars.DROPLET_IP }}:/var/www/html/
 
       - name: Deploy application
         uses: appleboy/ssh-action@master
