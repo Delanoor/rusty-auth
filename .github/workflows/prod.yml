@@ -1,4 +1,4 @@
-name: Build, Test and Deploy to Prod
+name: Build and Deploy Frontend
 
 # Trigger the workflow when changes are pushed to the main branch
 on:
@@ -7,84 +7,50 @@ on:
       - main
 
 env:
-  JWT_SECRET: ${{ secrets.JWT_SECRET }}
   BASE_PATH: ${{ vars.BASE_PATH }}
-  SQLX_OFFLINE: true
+  NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:15.2-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB: postgres
-        ports:
-          - 5432:5432
-      redis:
-        image: redis:7.0-alpine
-        ports:
-          - 6379:6379
 
     steps:
       # Checkout code from the repository
       - name: Checkout code
         uses: actions/checkout@v2
 
-        # Cache dependencies to speed up build times
-      - name: Cache dependencies
-        uses: actions/cache@v3
+      # Install Node.js
+      - name: Install Node.js
+        uses: actions/setup-node@v2
         with:
-          path: app-service/.cargo
-            app-service/target/
-            auth-service/.cargo
-            auth-service/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
+          node-version: "20"
 
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
+      # Install frontend dependencies
+      - name: Install frontend dependencies
+        run: npm install
 
-      - name: Build and test app-service code
-        working-directory: ./app-service
-        run: |
-          cargo build --verbose
-          cargo test --verbose
+      # Build frontend
+      - name: Build frontend
+        run: npm run build
 
-      - name: Build and test auth-service code
-        working-directory: ./auth-service
-        run: |
-          export JWT_SECRET=secret
-          export DATABASE_URL=postgres://postgres:${{secrets.POSTGRES_PASSWORD}}@localhost:5432
-          cargo build --verbose
-          cargo test --verbose
-
-        # Set up Docker Buildx for multi-platform builds
+      # Set up Docker Buildx for multi-platform builds
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      # Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push Docker images
-        uses: docker/bake-action@v2.3.0
-        with:
-          push: true
-          files: |
-            compose.yml
-            compose.override.yml
-          set: |
-            *.cache-from=type=gha
-            *.cache-to=type=gha,mode=max
+      # Build and push Docker image
+      - name: Build and push Docker image
+        run: |
+          docker build -t vinorelbine/rusty-next .
+          docker tag vinorelbine/rusty-next:latest vinorelbine/rusty-next:${{ github.sha }}
+          docker push vinorelbine/rusty-next:latest
+          docker push vinorelbine/rusty-next:${{ github.sha }}
 
   deploy:
     needs: build
@@ -97,23 +63,14 @@ jobs:
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
       - name: Install sshpass
         run: sudo apt-get install sshpass
 
-      - name: Copy compose.yml to droplet
-        run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no compose.yml root@${{ vars.DROPLET_IP }}:~
+      - name: Copy docker-compose.yml to droplet
+        run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no docker-compose.yml root@${{ vars.DROPLET_IP }}:~
 
       - name: Copy nginx-setup.conf
-        run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -r -o StrictHostKeyChecking=no nginx root@${{ vars.DROPLET_IP }}:~
+        run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no nginx/local_templates.default.conf.template root@${{ vars.DROPLET_IP }}:/etc/nginx/templates/
 
       - name: Deploy
         uses: appleboy/ssh-action@master

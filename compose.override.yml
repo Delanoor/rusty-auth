@@ -1,11 +1,11 @@
 version: "3.9"
 services:
   app-service:
-    build:
-      context: ./app-service # specify directory where local Dockerfile is located
+    container_name: app-service
+    image: vinorelbine/rusty-next:latest
+    restart: "always"
     environment:
-      AUTH_SERVICE_IP: ${AUTH_SERVICE_IP}
-      BASE_PATH: ${BASE_PATH}
+      NEXT_PUBLIC_API_URL: http://auth-service:3000
     ports:
       - "8000:8000"
 
