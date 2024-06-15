@@ -108,6 +108,8 @@ jobs:
 
       - name: Print working directory
         run: pwd
+      - name: List files in working directory
+        run: ls -la
 
       - name: Copy compose.yml to droplet
         run: sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no compose.yml root@${{ vars.DROPLET_IP }}:~
@@ -117,7 +119,7 @@ jobs:
 
       - name: Copy Next.js build files to droplet
         run: |
-          sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no -r ./frontend/.next root@${{ vars.DROPLET_IP }}:/var/www/html/
+          sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no -r .next root@${{ vars.DROPLET_IP }}:/var/www/html/
 
       - name: Deploy application
         uses: appleboy/ssh-action@master
