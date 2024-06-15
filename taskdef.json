@@ -1,52 +1,83 @@
 {
   "containerDefinitions": [
     {
-      "logConfiguration": {
-        "logDriver": "awslogs",
-        "options": {
-          "awslogs-group": "/ecs/<APP_NAME>-<ENV>",
-          "awslogs-region": "<AWS_REGION>",
-          "awslogs-stream-prefix": "ecs"
-        }
-      },
+      "name": "app-service",
+      "image": "<ECR_REGISTRY>/<ECR_REPO>:app-service-<IMAGE_TAG>",
+      "essential": true,
+      "memory": "<TASK_MEMORY>",
+      "cpu": "<TASK_CPU>",
       "portMappings": [
         {
-          "hostPort": <SERVICE_PORT>,
-          "protocol": "tcp",
-          "containerPort": <SERVICE_PORT> 
+          "containerPort": "<SERVICE_PORT>",
+          "hostPort": "<SERVICE_PORT>"
         }
       ],
       "environment": [
         {
-          "name": "IMAGE",
-          "value": "<IMAGE1_NAME>"
+          "name": "DATABASE_URL",
+          "value": "<DATABASE_URL>"
         },
         {
-          "name": "COMMIT",
-          "value": "<COMMIT>"
+          "name": "JWT_SECRET",
+          "value": "<JWT_SECRET>"
         },
         {
-          "name": "BRANCH",
-          "value": "<BRANCH>"
+          "name": "POSTGRES_PASSWORD",
+          "value": "<POSTGRES_PASSWORD>"
         },
         {
-          "name": "PORT",
-          "value": "<SERVICE_PORT>"
+          "name": "REDIS_HOST_NAME",
+          "value": "<REDIS_HOST_NAME>"
         },
         {
-          "name": "HOSTNAME",
-          "value": "0.0.0.0"
+          "name": "REDIS_PASSWORD",
+          "value": "<REDIS_PASSWORD>"
+        },
+        {
+          "name": "REDIS_PORT",
+          "value": "<REDIS_PORT>"
+        }
+      ]
+    },
+    {
+      "name": "auth-service",
+      "image": "<ECR_REGISTRY>/<ECR_REPO>:auth-service-<IMAGE_TAG>",
+      "essential": true,
+      "memory": "<TASK_MEMORY>",
+      "cpu": "<TASK_CPU>",
+      "portMappings": [
+        {
+          "containerPort": "<SERVICE_PORT>",
+          "hostPort": "<SERVICE_PORT>"
         }
       ],
-      "image": "<IMAGE1_NAME>",
-      "name": "<APP_NAME>-<ENV>-container"
+      "environment": [
+        {
+          "name": "DATABASE_URL",
+          "value": "<DATABASE_URL>"
+        },
+        {
+          "name": "JWT_SECRET",
+          "value": "<JWT_SECRET>"
+        },
+        {
+          "name": "POSTGRES_PASSWORD",
+          "value": "<POSTGRES_PASSWORD>"
+        },
+        {
+          "name": "REDIS_HOST_NAME",
+          "value": "<REDIS_HOST_NAME>"
+        },
+        {
+          "name": "REDIS_PASSWORD",
+          "value": "<REDIS_PASSWORD>"
+        },
+        {
+          "name": "REDIS_PORT",
+          "value": "<REDIS_PORT>"
+        }
+      ]
     }
   ],
-  "executionRoleArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/<APP_NAME>-<ENV>-ecs-exec-role",
-  "taskRoleArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/<APP_NAME>-<ENV>-ecs-task-role",
-  "family": "<APP_NAME>-<ENV>-task",
-  "requiresCompatibilities": ["FARGATE"],
-  "networkMode": "awsvpc",
-  "cpu": "<TASK_CPU>",
-  "memory": "<TASK_MEMORY>"
+  "family": "<APP_NAME>-<ENV>"
 }
