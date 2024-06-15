@@ -81,3 +81,31 @@ jobs:
             -t $ECR_REGISTRY/${{ env.ECR_REPO }}:auth-service-latest .
           docker push $ECR_REGISTRY/${{ env.ECR_REPO }}:auth-service-$IMAGE_TAG
           docker push $ECR_REGISTRY/${{ env.ECR_REPO }}:auth-service-latest
+
+      - name: Generate files
+        env:
+          TASK_CPU: 256
+          TASK_MEMORY: 512
+        run: |
+          sed -i -e 's%<COMMIT>%'"${{ github.sha }}"'%' -e 's%<BRANCH>%'"${{ github.ref }}"'%' taskdef.json
+          sed -i -e 's%<AWS_ACCOUNT_ID>%'"${{ secrets.AWS_ACCOUNT_ID }}"'%' taskdef.json
+          sed -i -e 's%<AWS_REGION>%'"${{ secrets.AWS_REGION }}"'%' taskdef.json
+          sed -i -e 's%<TASK_CPU>%'"${{ env.TASK_CPU }}"'%' taskdef.json
+          sed -i -e 's%<TASK_MEMORY>%'"${{ env.TASK_MEMORY }}"'%' taskdef.json
+          sed -i 's/<APP_NAME>/'${{ secrets.APP_NAME }}'/g' appspec.yml taskdef.json
+          sed -i 's/<ENV>/'${{ env.APP_ENV }}'/g' appspec.yml taskdef.json
+          sed -i 's/<SERVICE_PORT>/'${{ secrets.SERVICE_PORT }}'/g' appspec.yml taskdef.json
+
+      - name: Generate artifact
+        id: artifact
+        run: zip -j artifact.zip appspec.yml taskdef.json
+
+      - name: Deploy to S3
+        uses: jakejarvis/s3-sync-action@v0.5.1
+        with:
+          args: --follow-symlinks --exclude '*' --include 'artifact.zip'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          AWS_S3_BUCKET: "${{ secrets.APP_NAME }}-${{ env.APP_ENV }}-codepipeline"
