@@ -7,7 +7,9 @@ use auth_service::services::data_stores::postgres_user_store::PostgresUserStore;
 use auth_service::services::data_stores::redis_banned_token_store::RedisBannedTokenStore;
 use auth_service::services::data_stores::redis_two_fa_code_store::RedisTwoFACodeStore;
 
-use auth_service::utils::constants::{prod, DATABASE_URL, REDIS_HOST_NAME};
+use auth_service::utils::constants::{
+    prod, DATABASE_URL, REDIS_HOST_NAME, REDIS_PASSWORD, REDIS_PORT,
+};
 
 use auth_service::{get_postgres_pool, get_redis_client, Application};
 use sqlx::PgPool;
@@ -61,8 +63,12 @@ async fn configure_postgresql() -> Result<PgPool, Box<dyn std::error::Error>> {
 }
 
 fn configure_redis() -> redis::Connection {
-    get_redis_client(REDIS_HOST_NAME.to_string())
-        .expect("Failed to get Redis client")
-        .get_connection()
-        .expect("Failed to get Redis connection")
+    get_redis_client(
+        REDIS_HOST_NAME.to_string(),
+        REDIS_PASSWORD.to_string(),
+        REDIS_PORT.to_string(),
+    )
+    .expect("Failed to get Redis client")
+    .get_connection()
+    .expect("Failed to get Redis connection")
 }
