@@ -15,6 +15,7 @@ ARG REDIS_PORT
 
 # Set the DATABASE_URL environment variable for the build stage
 ENV DATABASE_URL=${DATABASE_URL}
+ENV SQLX_OFFLINE=true
 
 # Create a new empty shell project
 RUN USER=root cargo new --bin auth-service
