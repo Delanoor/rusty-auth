@@ -81,29 +81,3 @@ jobs:
             -t $ECR_REGISTRY/${{ env.ECR_REPO }}:auth-service-latest .
           docker push $ECR_REGISTRY/${{ env.ECR_REPO }}:auth-service-$IMAGE_TAG
           docker push $ECR_REGISTRY/${{ env.ECR_REPO }}:auth-service-latest
-
-      - name: Generate Terraform variables file
-        run: |
-          echo 'project_name = "rusty-auth"' > terraform.tfvars
-          echo 'aws_region = "us-west-1"' >> terraform.tfvars
-          echo 'certificate_arn = "arn:aws:acm:us-west-1:043152383660:certificate/7d1377f9-b40c-4688-afd2-717f8da99f54"' >> terraform.tfvars
-          echo 'app_port = 3000' >> terraform.tfvars
-          echo 'health_check_path = "/"' >> terraform.tfvars
-
-      - name: Install Terraform
-        uses: hashicorp/setup-terraform@v1
-        with:
-          terraform_wrapper: false
-
-      - name: Initialize Terraform
-        run: terraform init
-
-      - name: Apply Terraform configuration
-        run: |
-          set -o allexport
-          source .env
-          set +o allexport
-          terraform apply -auto-approve
-
-      - name: Output ECS Service URL
-        run: terraform output
