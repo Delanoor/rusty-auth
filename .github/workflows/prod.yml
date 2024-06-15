@@ -42,6 +42,14 @@ jobs:
         working-directory: ./frontend
         run: bun run build
 
+      # Debug: List frontend directory contents
+      - name: List frontend directory contents
+        run: ls -la ./frontend
+
+      # Debug: List .next directory contents
+      - name: List .next directory contents
+        run: ls -la ./frontend/.next
+
       # Set up Docker Buildx for multi-platform builds
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -90,7 +98,7 @@ jobs:
         run: sudo apt-get install -y sshpass
 
       - name: Copy compose.yml to droplet
-        run: sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no compose.yml root@${{ vars.DROPLET_IP }}:~
+        run: sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no docker-compose.yml root@${{ vars.DROPLET_IP }}:~
 
       - name: Copy Nginx configuration to droplet
         run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -r -o StrictHostKeyChecking=no nginx root@${{ vars.DROPLET_IP }}:~
