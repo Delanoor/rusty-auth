@@ -5,8 +5,15 @@ FROM rust:latest AS builder
 RUN apt-get update && \
     apt-get install -y pkg-config libssl-dev
 
-# Set the DATABASE_URL environment variable
+# Set build arguments for environment variables
 ARG DATABASE_URL
+ARG JWT_SECRET
+ARG POSTGRES_PASSWORD
+ARG REDIS_HOST_NAME
+ARG REDIS_PASSWORD
+ARG REDIS_PORT
+
+# Set the DATABASE_URL environment variable for the build stage
 ENV DATABASE_URL=${DATABASE_URL}
 
 # Create a new empty shell project
