@@ -42,22 +42,11 @@ jobs:
         working-directory: ./frontend
         run: bun run build
 
-      # Debug: List frontend directory contents
-      - name: List frontend directory contents
-        run: ls -la ./frontend
-        # Debug: Check if .next directory exists
-      - name: Check if .next directory exists
-        run: |
-          if [ -d ./frontend/.next ]; then
-            echo ".next directory exists."
-          else
-            echo ".next directory does not exist."
-            exit 1
-          fi
-
-      # Debug: List .next directory contents
-      - name: List .next directory contents
-        run: ls -la ./frontend/.next
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: next-build
+          path: ./frontend/.next
 
       # Set up Docker Buildx for multi-platform builds
       - name: Set up Docker Buildx
