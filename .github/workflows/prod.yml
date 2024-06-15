@@ -45,6 +45,15 @@ jobs:
       # Debug: List frontend directory contents
       - name: List frontend directory contents
         run: ls -la ./frontend
+        # Debug: Check if .next directory exists
+      - name: Check if .next directory exists
+        run: |
+          if [ -d ./frontend/.next ]; then
+            echo ".next directory exists."
+          else
+            echo ".next directory does not exist."
+            exit 1
+          fi
 
       # Debug: List .next directory contents
       - name: List .next directory contents
@@ -96,6 +105,9 @@ jobs:
 
       - name: Install sshpass
         run: sudo apt-get install -y sshpass
+
+      - name: Print working directory
+        run: pwd
 
       - name: Copy compose.yml to droplet
         run: sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no compose.yml root@${{ vars.DROPLET_IP }}:~
