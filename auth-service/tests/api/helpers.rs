@@ -6,7 +6,7 @@ use auth_service::{
         redis_banned_token_store::RedisBannedTokenStore,
         redis_two_fa_code_store::RedisTwoFACodeStore,
     },
-    utils::constants::{test, DATABASE_URL, REDIS_HOST_NAME},
+    utils::constants::{test, DATABASE_URL, REDIS_HOST_NAME, REDIS_PASSWORD, REDIS_PORT},
     Application,
 };
 use reqwest::cookie::Jar;
@@ -205,10 +205,14 @@ async fn configure_database(db_conn_string: &str, db_name: &str) {
 }
 
 fn configure_redis() -> redis::Connection {
-    get_redis_client(REDIS_HOST_NAME.to_string())
-        .expect("Failed to get Redis client")
-        .get_connection()
-        .expect("Failed to get Redis connection")
+    get_redis_client(
+        REDIS_PASSWORD.to_string(),
+        REDIS_HOST_NAME.to_string(),
+        REDIS_PORT.to_string(),
+    )
+    .expect("Failed to get Redis client")
+    .get_connection()
+    .expect("Failed to get Redis connection")
 }
 
 async fn delete_database(db_name: &str) {
