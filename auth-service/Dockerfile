@@ -1,29 +1,34 @@
-# Start with image that has the Rust toolchain installed
-FROM rust:1.77-alpine AS chef
-USER root
-# Add cargo-chef to cache dependencies
-RUN apk add --no-cache musl-dev & cargo install cargo-chef
-WORKDIR /app
+# Use an official Rust image as the builder
+FROM rust:latest AS builder
 
-FROM chef AS planner
-COPY . .
-# Capture info needed to build dependencies
-RUN cargo chef prepare --recipe-path recipe.json
+# Install required packages
+RUN apt-get update && \
+    apt-get install -y pkg-config libssl-dev
 
-FROM chef AS builder
-COPY --from=planner /app/recipe.json recipe.json
-# Build dependencies - this is the caching Docker layer!
-RUN cargo chef cook --release --recipe-path recipe.json
-# Build application
-COPY . .
-ENV SQLX_OFFLINE true
-RUN cargo build --release --bin auth-service
+# Create a new empty shell project
+RUN USER=root cargo new --bin auth-service
+WORKDIR /auth-service
 
-# We do not need the Rust toolchain to run the binary!
-# Start with a minimal image and copy over the binary and assets folder.
-FROM debian:buster-slim AS runtime
-WORKDIR /app
-COPY --from=builder /app/target/release/auth-service /usr/local/bin
-COPY --from=builder /app/assets /app/assets
-ENV REDIS_HOST_NAME=redis
-ENTRYPOINT ["/usr/local/bin/auth-service"]
+# Copy manifests
+COPY ./Cargo.toml ./Cargo.toml
+COPY ./Cargo.lock ./Cargo.lock
+
+# Copy the source code
+COPY ./src ./src
+
+# Build the dependencies
+RUN cargo build --release
+
+# Create a new stage for the final image
+FROM debian:buster-slim
+
+# Install OpenSSL runtime libraries
+RUN apt-get update && \
+    apt-get install -y libssl1.1 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy the build artifacts from the builder stage
+COPY --from=builder /auth-service/target/release/auth-service /usr/local/bin/auth-service
+
+# Specify the startup command
+CMD ["auth-service"]
