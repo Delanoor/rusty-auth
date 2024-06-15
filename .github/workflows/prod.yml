@@ -53,7 +53,7 @@ jobs:
       - name: Build, tag, and push app-service image to Amazon ECR
         id: build-app-service-image
         env:
-          ECR_REPO: "${{ secrets.APP_NAME }}-${{ env.APP_ENV }}-app-service-repo"
+          ECR_REPO: "${{ secrets.APP_NAME }}-${{ env.APP_ENV }}-repo"
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
