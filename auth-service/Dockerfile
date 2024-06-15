@@ -1,12 +1,11 @@
-# Start with image that has the Rust toolchain installed
-FROM --platform=linux/arm64/v8 rust:1.77-alpine AS chef
+FROM rust:1 AS chef 
 USER root
 
 # Add cargo-chef to cache dependencies
-RUN apk add --no-cache musl-dev openssl-dev openssl pkgconfig && cargo install cargo-chef
+RUN cargo install cargo-chef
 
 # Install protobuf compiler
-RUN apk add --no-cache protobuf
+# RUN apk add --no-cache protobuf
 
 WORKDIR /app
 
