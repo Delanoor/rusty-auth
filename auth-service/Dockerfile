@@ -1,10 +1,13 @@
 # Start with image that has the Rust toolchain installed
 FROM rust:1.77-alpine AS chef
 USER root
+
 # Add cargo-chef to cache dependencies
-RUN apk add --no-cache musl-dev & cargo install cargo-chef
+RUN apk add --no-cache musl-dev openssl-dev pkgconfig && cargo install cargo-chef
+
 # Install protobuf compiler
 RUN apk add --no-cache protobuf
+
 WORKDIR /app
 
 FROM chef AS planner
@@ -27,6 +30,15 @@ FROM debian:buster-slim AS runtime
 WORKDIR /app
 COPY --from=builder /app/target/release/auth-service /usr/local/bin
 COPY --from=builder /app/assets /app/assets
+
+# Set environment variables for runtime
 ENV REDIS_HOST_NAME=redis
+ENV JWT_SECRET=${JWT_SECRET}
+ENV DATABASE_URL=${DATABASE_URL}
+ENV POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+ENV REDIS_HOST_NAME=${REDIS_HOST_NAME}
+ENV REDIS_PASSWORD=${REDIS_PASSWORD}
+ENV REDIS_PORT=${REDIS_PORT}
+
 EXPOSE 3000
 ENTRYPOINT ["/usr/local/bin/auth-service"]
