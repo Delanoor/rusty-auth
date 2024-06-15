@@ -93,7 +93,7 @@ jobs:
         run: sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no compose.yml root@${{ vars.DROPLET_IP }}:~
 
       - name: Copy Nginx configuration to droplet
-        run: sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no nginx/templates/default.conf root@${{ vars.DROPLET_IP }}:/etc/nginx/templates/default.conf
+        run: sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no nginx root@${{ vars.DROPLET_IP }}:/etc/nginx/templates/default.conf
 
       - name: Copy Next.js build files to droplet
         run: |
