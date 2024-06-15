@@ -58,7 +58,7 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           cd app-service
-          docker build -t $ECR_REGISTRY/${{ env.ECR_REPO }}:app-service-$IMAGE_TAG -t $ECR_REGISTRY/${{ env.ECR_REPO }}:app-service-latest .
+          docker build --build-arg DATABASE_URL=$DATABASE_URL -t $ECR_REGISTRY/${{ env.ECR_REPO }}:app-service-$IMAGE_TAG -t $ECR_REGISTRY/${{ env.ECR_REPO }}:app-service-latest .
           docker push $ECR_REGISTRY/${{ env.ECR_REPO }}:app-service-$IMAGE_TAG
           docker push $ECR_REGISTRY/${{ env.ECR_REPO }}:app-service-latest
 
@@ -68,9 +68,15 @@ jobs:
           ECR_REPO: "${{ secrets.APP_NAME }}-${{ env.APP_ENV }}-repo"
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          REDIS_HOST_NAME: ${{ secrets.REDIS_HOST_NAME }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
         run: |
           cd auth-service
-          docker build -t $ECR_REGISTRY/${{ env.ECR_REPO }}:auth-service-$IMAGE_TAG -t $ECR_REGISTRY/${{ env.ECR_REPO }}:auth-service-latest .
+          docker build --build-arg DATABASE_URL=$DATABASE_URL -t $ECR_REGISTRY/${{ env.ECR_REPO }}:auth-service-$IMAGE_TAG -t $ECR_REGISTRY/${{ env.ECR_REPO }}:auth-service-latest .
           docker push $ECR_REGISTRY/${{ env.ECR_REPO }}:auth-service-$IMAGE_TAG
           docker push $ECR_REGISTRY/${{ env.ECR_REPO }}:auth-service-latest
 

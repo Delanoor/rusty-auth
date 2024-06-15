@@ -5,6 +5,10 @@ FROM rust:latest AS builder
 RUN apt-get update && \
     apt-get install -y pkg-config libssl-dev
 
+# Set the DATABASE_URL environment variable
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
+
 # Create a new empty shell project
 RUN USER=root cargo new --bin auth-service
 WORKDIR /auth-service
@@ -29,6 +33,14 @@ RUN apt-get update && \
 
 # Copy the build artifacts from the builder stage
 COPY --from=builder /auth-service/target/release/auth-service /usr/local/bin/auth-service
+
+# Set environment variables for runtime
+ENV JWT_SECRET=${JWT_SECRET}
+ENV DATABASE_URL=${DATABASE_URL}
+ENV POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+ENV REDIS_HOST_NAME=${REDIS_HOST_NAME}
+ENV REDIS_PASSWORD=${REDIS_PASSWORD}
+ENV REDIS_PORT=${REDIS_PORT}
 
 # Specify the startup command
 CMD ["auth-service"]
