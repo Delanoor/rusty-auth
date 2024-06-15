@@ -19,8 +19,15 @@ jobs:
     environment: production
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Checkout app-service code
+        uses: actions/checkout@v3
+        with:
+          repository: delanoor/rusty-next
+          token: ${{ secrets.PAT_TOKEN }}
+          path: app-service
 
       - name: Create env file
         run: echo "${{ secrets.ENV }}" > .env
@@ -50,6 +57,7 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          cd app-service
           docker build -t $ECR_REGISTRY/${{ env.ECR_REPO }}:$IMAGE_TAG -t $ECR_REGISTRY/${{ env.ECR_REPO }}:latest .
           docker push $ECR_REGISTRY/${{ env.ECR_REPO }}:$IMAGE_TAG
           docker push $ECR_REGISTRY/${{ env.ECR_REPO }}:latest
@@ -61,7 +69,8 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/${{ env.ECR_REPO }}:$IMAGE_TAG -t $ECR_REGISTRY/${{ env.ECR_REPO }}:latest ./auth-service
+          cd auth-service
+          docker build -t $ECR_REGISTRY/${{ env.ECR_REPO }}:$IMAGE_TAG -t $ECR_REGISTRY/${{ env.ECR_REPO }}:latest .
           docker push $ECR_REGISTRY/${{ env.ECR_REPO }}:$IMAGE_TAG
           docker push $ECR_REGISTRY/${{ env.ECR_REPO }}:latest
 
