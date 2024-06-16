@@ -31,16 +31,10 @@ async fn main() {
         RwLock::new(redis_code_config),
     ))));
     let email_client = Arc::new(RwLock::new(MockEmailClient));
-    let clean_up_called = false;
 
-    let app_state = AppState::new(
-        user_store,
-        token_store,
-        two_fa_code_store,
-        email_client,
-        clean_up_called,
-    );
-    let app = Application::build(app_state, prod::APP_ADDRESS)
+    let app_state: AppState =
+        AppState::new(user_store, token_store, two_fa_code_store, email_client);
+    let app: Application = Application::build(app_state, prod::APP_ADDRESS)
         .await
         .expect("Failed to build application");
 
