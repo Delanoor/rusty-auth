@@ -8,6 +8,7 @@ use axum::{
 };
 use domain::error::AuthAPIError;
 use redis::{Client, RedisResult};
+
 use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::error::Error;
@@ -34,7 +35,7 @@ impl Application {
         let base_path = BASE_PATH;
         let allowed_origins: [axum::http::HeaderValue; 5] = [
             "http://localhost:8000".parse()?,
-            "http://localhost:3001".parse()?,
+            "http://localhost:8080".parse()?,
             "http://172.17.0.1".parse()?,
             format!("https://{}:8000", droplet_ip).parse()?,
             format!("{}/app", base_path).parse()?,
@@ -99,7 +100,14 @@ pub async fn get_postgres_pool(url: &str) -> Result<PgPool, sqlx::Error> {
     PgPoolOptions::new().max_connections(5).connect(url).await
 }
 
-pub fn get_redis_client(redis_hostname: String) -> RedisResult<Client> {
-    let redis_url = format!("redis://{}/", redis_hostname);
+pub fn get_redis_client(
+    redis_hostname: String,
+    redis_password: String,
+    redis_port: String,
+) -> RedisResult<Client> {
+    let redis_url = format!(
+        "rediss://default:{}@{}:{}",
+        redis_password, redis_hostname, redis_port
+    );
     redis::Client::open(redis_url)
 }

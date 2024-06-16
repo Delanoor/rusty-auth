@@ -1,89 +1,125 @@
-name: Build and Deploy Frontend
+name: Build, Test and Deploy to Prod
 
-# Trigger the workflow when changes are pushed to the main branch
 on:
   push:
     branches:
-      - main
+      - aws-deploy
 
 env:
+  JWT_SECRET: ${{ secrets.JWT_SECRET }}
   BASE_PATH: ${{ vars.BASE_PATH }}
-  NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+  DOCKER_HUB_USERNAME: vinorelbine
+  IMAGE_TAG: ${{ github.sha }}
+  SQLX_OFFLINE: true
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the main repository code
-      - name: Checkout main code
+      - name: Checkout code
         uses: actions/checkout@v2
 
-      # Clone the frontend repository
-      - name: Clone frontend repository
-        uses: actions/checkout@v2
+      - name: Checkout app-service code
+        uses: actions/checkout@v3
         with:
           repository: delanoor/rusty-next
-          path: frontend
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: app-service
 
-      # Install Bun
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - name: Create env file from secret
+        run: echo "${{ secrets.ENV }}" > .env
+
+      - name: Load .env
+        run: |
+          echo "Loading environment variables from .env file"
+          set -o allexport
+          source .env
+          set +o allexport
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
         with:
-          bun-version: "latest"
+          path: |
+            app-service/.cargo
+            app-service/target/
+            auth-service/.cargo
+            auth-service/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
 
-      # Install frontend dependencies
-      - name: Install frontend dependencies
-        working-directory: ./frontend
-        run: bun install
-
-      # Build frontend
-      - name: Build frontend
-        working-directory: ./frontend
-        run: bun run build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v2
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
         with:
-          name: next-build
-          path: ./frontend/.next
+          profile: minimal
+          toolchain: stable
 
-      # Set up Docker Buildx for multi-platform builds
+      - name: Build and test app-service code
+        working-directory: ./app-service
+        run: |
+          cargo build --verbose
+          cargo test --verbose
+
+      - name: Build and test auth-service code
+        working-directory: ./auth-service
+        run: |
+          cargo build --verbose
+          cargo test --verbose
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Build and push Docker image
-      - name: Build and push Docker image
-        working-directory: ./frontend
+      - name: Build, tag, and push app-service image to Docker Hub
+        id: build-app-service-image
         run: |
-          docker build -t vinorelbine/rusty-next .
-          docker tag vinorelbine/rusty-next:latest vinorelbine/rusty-next:${{ github.sha }}
-          docker push vinorelbine/rusty-next:latest
-          docker push vinorelbine/rusty-next:${{ github.sha }}
+          cd app-service
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=http://auth-service:3000 \
+            -t ${{ env.DOCKER_HUB_USERNAME }}/rusty-next:app-service-${{ env.IMAGE_TAG }} \
+            -t ${{ env.DOCKER_HUB_USERNAME }}/rusty-next:app-service-latest .
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/rusty-next:app-service-${{ env.IMAGE_TAG }}
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/rusty-next:app-service-latest
+
+      - name: Build, tag, and push auth-service image to Docker Hub
+        id: build-auth-service-image
+        run: |
+          cd auth-service
+          docker build \
+            --build-arg DATABASE_URL=${{ env.DATABASE_URL }} \
+            --build-arg JWT_SECRET=${{ env.JWT_SECRET }} \
+            --build-arg SQLX_OFFLINE=${{ env.SQLX_OFFLINE }} \
+            --build-arg POSTGRES_PASSWORD=${{ env.POSTGRES_PASSWORD }} \
+            --build-arg REDIS_HOST_NAME=${{ env.REDIS_HOST_NAME }} \
+            --build-arg REDIS_PASSWORD=${{ env.REDIS_PASSWORD }} \
+            --build-arg REDIS_PORT=${{ env.REDIS_PORT }} \
+            -t ${{ env.DOCKER_HUB_USERNAME }}/auth-service:auth-service-${{ env.IMAGE_TAG }} \
+            -t ${{ env.DOCKER_HUB_USERNAME }}/auth-service:auth-service-latest .
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/auth-service:auth-service-${{ env.IMAGE_TAG }}
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/auth-service:auth-service-latest
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
 
     env:
-      DROPLET_IP: ${{ vars.DROPLET_IP }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
       BASE_PATH: ${{ vars.BASE_PATH }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
-      NGINX_PORT: ${{ vars.NGINX_PORT }}
-      NGINX_HTTPS_PORT: ${{ vars.NGINX_HTTPS_PORT }}
-      APP_SERVICE_PORT: ${{ vars.APP_SERVICE_PORT }}
 
     steps:
-      - name: Checkout main code
+      - name: Checkout code
         uses: actions/checkout@v2
 
       - name: Log in to Docker Hub
@@ -92,30 +128,23 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Install sshpass
-        run: sudo apt-get install -y sshpass
+      - name: Copy .env and compose.yml to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: |
+            .env
+            compose.yml
+          target: "~/"
 
-      - name: Print working directory
-        run: pwd
-      - name: List files in working directory
-        run: ls -la
-
-      - name: Copy compose.yml to droplet
-        run: sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no compose.yml root@${{ vars.DROPLET_IP }}:~
-
-      - name: Copy Nginx configuration to droplet
-        run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -r -o StrictHostKeyChecking=no nginx root@${{ vars.DROPLET_IP }}:~
-
-      - name: Copy Next.js build files to droplet
-        run: |
-          sshpass -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no -r .next root@${{ vars.DROPLET_IP }}:/var/www/html/
-
-      - name: Deploy application
+      - name: Deploy
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ vars.DROPLET_IP }}
-          username: root
-          password: ${{ secrets.DROPLET_PASSWORD }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ~
             docker compose down

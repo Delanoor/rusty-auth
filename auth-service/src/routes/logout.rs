@@ -13,6 +13,7 @@ pub async fn logout(
 ) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>) {
     // Retrieve JWT cookie from the `CookieJar`
     // Return AuthAPIError::MissingToken is the cookie is not found
+
     let cookie = match jar.get(JWT_COOKIE_NAME) {
         Some(c) => c,
         None => return (jar, Err(AuthAPIError::MissingToken)),

@@ -1,0 +1,83 @@
+{
+  "containerDefinitions": [
+    {
+      "name": "app-service",
+      "image": "<ECR_REGISTRY>/<ECR_REPO>:app-service-<IMAGE_TAG>",
+      "essential": true,
+      "memory": "<TASK_MEMORY>",
+      "cpu": "<TASK_CPU>",
+      "portMappings": [
+        {
+          "containerPort": "<SERVICE_PORT>",
+          "hostPort": "<SERVICE_PORT>"
+        }
+      ],
+      "environment": [
+        {
+          "name": "DATABASE_URL",
+          "value": "<DATABASE_URL>"
+        },
+        {
+          "name": "JWT_SECRET",
+          "value": "<JWT_SECRET>"
+        },
+        {
+          "name": "POSTGRES_PASSWORD",
+          "value": "<POSTGRES_PASSWORD>"
+        },
+        {
+          "name": "REDIS_HOST_NAME",
+          "value": "<REDIS_HOST_NAME>"
+        },
+        {
+          "name": "REDIS_PASSWORD",
+          "value": "<REDIS_PASSWORD>"
+        },
+        {
+          "name": "REDIS_PORT",
+          "value": "<REDIS_PORT>"
+        }
+      ]
+    },
+    {
+      "name": "auth-service",
+      "image": "<ECR_REGISTRY>/<ECR_REPO>:auth-service-<IMAGE_TAG>",
+      "essential": true,
+      "memory": "<TASK_MEMORY>",
+      "cpu": "<TASK_CPU>",
+      "portMappings": [
+        {
+          "containerPort": "<SERVICE_PORT>",
+          "hostPort": "<SERVICE_PORT>"
+        }
+      ],
+      "environment": [
+        {
+          "name": "DATABASE_URL",
+          "value": "<DATABASE_URL>"
+        },
+        {
+          "name": "JWT_SECRET",
+          "value": "<JWT_SECRET>"
+        },
+        {
+          "name": "POSTGRES_PASSWORD",
+          "value": "<POSTGRES_PASSWORD>"
+        },
+        {
+          "name": "REDIS_HOST_NAME",
+          "value": "<REDIS_HOST_NAME>"
+        },
+        {
+          "name": "REDIS_PASSWORD",
+          "value": "<REDIS_PASSWORD>"
+        },
+        {
+          "name": "REDIS_PORT",
+          "value": "<REDIS_PORT>"
+        }
+      ]
+    }
+  ],
+  "family": "<APP_NAME>-<ENV>"
+}
