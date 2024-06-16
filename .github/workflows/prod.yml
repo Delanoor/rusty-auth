@@ -1,29 +1,47 @@
 name: Build, Test and Deploy to Prod
 
-# Trigger the workflow when changes are pushed to the main branch
 on:
   push:
     branches:
-      - aws-deploy
+      - main
 
 env:
   JWT_SECRET: ${{ secrets.JWT_SECRET }}
   BASE_PATH: ${{ vars.BASE_PATH }}
+  DOCKER_HUB_USERNAME: vinorelbine
+  IMAGE_TAG: ${{ github.sha }}
+  SQLX_OFFLINE: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout code from the repository
       - name: Checkout code
         uses: actions/checkout@v2
 
-        # Cache dependencies to speed up build times
+      - name: Checkout app-service code
+        uses: actions/checkout@v3
+        with:
+          repository: delanoor/rusty-next
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: app-service
+
+      - name: Create env file from secret
+        run: echo "${{ secrets.ENV }}" > .env
+
+      - name: Load .env
+        run: |
+          echo "Loading environment variables from .env file"
+          set -o allexport
+          source .env
+          set +o allexport
+
       - name: Cache dependencies
         uses: actions/cache@v3
         with:
-          path: app-service/.cargo
+          path: |
+            app-service/.cargo
             app-service/target/
             auth-service/.cargo
             auth-service/target/
@@ -48,7 +66,6 @@ jobs:
           cargo build --verbose
           cargo test --verbose
 
-        # Set up Docker Buildx for multi-platform builds
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
@@ -58,16 +75,33 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push Docker images
-        uses: docker/bake-action@v2.3.0
-        with:
-          push: true
-          files: |
-            compose.yml
-            compose.override.yml
-          set: |
-            *.cache-from=type=gha
-            *.cache-to=type=gha,mode=max
+      - name: Build, tag, and push app-service image to Docker Hub
+        id: build-app-service-image
+        run: |
+          cd app-service
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=http://auth-service:3000 \
+            -t ${{ env.DOCKER_HUB_USERNAME }}/rusty-next:app-service-${{ env.IMAGE_TAG }} \
+            -t ${{ env.DOCKER_HUB_USERNAME }}/rusty-next:app-service-latest .
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/rusty-next:app-service-${{ env.IMAGE_TAG }}
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/rusty-next:app-service-latest
+
+      - name: Build, tag, and push auth-service image to Docker Hub
+        id: build-auth-service-image
+        run: |
+          cd auth-service
+          docker build \
+            --build-arg DATABASE_URL=${{ env.DATABASE_URL }} \
+            --build-arg JWT_SECRET=${{ env.JWT_SECRET }} \
+            --build-arg SQLX_OFFLINE=${{ env.SQLX_OFFLINE }} \
+            --build-arg POSTGRES_PASSWORD=${{ env.POSTGRES_PASSWORD }} \
+            --build-arg REDIS_HOST_NAME=${{ env.REDIS_HOST_NAME }} \
+            --build-arg REDIS_PASSWORD=${{ env.REDIS_PASSWORD }} \
+            --build-arg REDIS_PORT=${{ env.REDIS_PORT }} \
+            -t ${{ env.DOCKER_HUB_USERNAME }}/auth-service:auth-service-${{ env.IMAGE_TAG }} \
+            -t ${{ env.DOCKER_HUB_USERNAME }}/auth-service:auth-service-latest .
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/auth-service:auth-service-${{ env.IMAGE_TAG }}
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/auth-service:auth-service-latest
 
   deploy:
     needs: build
