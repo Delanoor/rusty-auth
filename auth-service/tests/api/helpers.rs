@@ -27,7 +27,7 @@ pub struct TestApp {
     pub email_client: EmailClientType,
     pub http_client: reqwest::Client,
     pub db_name: String,
-    pub app_state: Arc<RwLock<AppState>>,
+    pub clean_up_called: bool,
 }
 
 impl TestApp {
@@ -58,7 +58,6 @@ impl TestApp {
             token_store.clone(),
             two_fa_code_store.clone(),
             email_client.clone(),
-            false,
         );
         let app: Application = Application::build(app_state.clone(), test::APP_ADDRESS)
             .await
@@ -84,7 +83,7 @@ impl TestApp {
             two_fa_code_store,
             email_client,
             db_name,
-            app_state: Arc::new(RwLock::new(app_state.clone())),
+            clean_up_called: false,
         }
     }
 
@@ -152,10 +151,21 @@ impl TestApp {
             .expect("Failed to execute request.")
     }
 
-    pub async fn clean_up(&self) {
+    pub async fn clean_up(&mut self) {
+        if self.clean_up_called {
+            return;
+        }
         delete_database(&self.db_name).await;
-        let mut app_state = self.app_state.write().await;
-        app_state.clean_up_called = true;
+
+        self.clean_up_called = true;
+    }
+}
+
+impl Drop for TestApp {
+    fn drop(&mut self) {
+        if !self.clean_up_called {
+            panic!("TestApp::clean_up not called");
+        }
     }
 }
 

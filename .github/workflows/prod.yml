@@ -1,111 +1,112 @@
-name: Production
+name: Build, Test and Deploy to Prod
 
+# Trigger the workflow when changes are pushed to the main branch
 on:
   push:
     branches:
-      - aws-deploy
+      - main
 
 env:
-  APP_ENV: production
-
-permissions:
-  id-token: write
-  contents: read
+  JWT_SECRET: ${{ secrets.JWT_SECRET }}
+  BASE_PATH: ${{ vars.BASE_PATH }}
 
 jobs:
-  deploy:
-    name: Deploy
-    runs-on: ubuntu-22.04
-    environment: production
+  build:
+    runs-on: ubuntu-latest
 
     steps:
+      # Checkout code from the repository
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
-      - name: Checkout app-service code
-        uses: actions/checkout@v3
+        # Cache dependencies to speed up build times
+      - name: Cache dependencies
+        uses: actions/cache@v3
         with:
-          repository: delanoor/rusty-next
-          token: ${{ secrets.GITHUB_TOKEN }}
-          path: app-service
+          path: app-service/.cargo
+            app-service/target/
+            auth-service/.cargo
+            auth-service/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
 
-      - name: Create env file from secret
-        run: echo "${{ secrets.ENV }}" > .env
-
-      - name: Load .env
-        run: |
-          echo "Loading environment variables from .env file"
-          set -o allexport
-          source .env
-          set +o allexport
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          profile: minimal
+          toolchain: stable
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Build, tag, and push app-service image to Amazon ECR
-        id: build-app-service-image
-        env:
-          ECR_REPO: "${{ secrets.APP_NAME }}-${{ env.APP_ENV }}-repo"
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+      - name: Build and test app-service code
+        working-directory: ./app-service
         run: |
-          cd app-service
-          docker build --build-arg DATABASE_URL=$DATABASE_URL -t $ECR_REGISTRY/${{ env.ECR_REPO }}:app-service-$IMAGE_TAG -t $ECR_REGISTRY/${{ env.ECR_REPO }}:app-service-latest .
-          docker push $ECR_REGISTRY/${{ env.ECR_REPO }}:app-service-$IMAGE_TAG
-          docker push $ECR_REGISTRY/${{ env.ECR_REPO }}:app-service-latest
+          cargo build --verbose
+          cargo test --verbose
 
-      - name: Build, tag, and push auth-service image to Amazon ECR
-        id: build-auth-service-image
-        env:
-          ECR_REPO: "${{ secrets.APP_NAME }}-${{ env.APP_ENV }}-repo"
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+      - name: Build and test auth-service code
+        working-directory: ./auth-service
         run: |
-          cd auth-service
-          docker build \
-            --build-arg DATABASE_URL=$DATABASE_URL \
-            --build-arg JWT_SECRET=$JWT_SECRET \
-            --build-arg POSTGRES_PASSWORD=$POSTGRES_PASSWORD \
-            --build-arg REDIS_HOST_NAME=$REDIS_HOST_NAME \
-            --build-arg REDIS_PASSWORD=$REDIS_PASSWORD \
-            --build-arg REDIS_PORT=$REDIS_PORT \
-            -t $ECR_REGISTRY/${{ env.ECR_REPO }}:auth-service-$IMAGE_TAG \
-            -t $ECR_REGISTRY/${{ env.ECR_REPO }}:auth-service-latest .
-          docker push $ECR_REGISTRY/${{ env.ECR_REPO }}:auth-service-$IMAGE_TAG
-          docker push $ECR_REGISTRY/${{ env.ECR_REPO }}:auth-service-latest
+          cargo build --verbose
+          cargo test --verbose
 
-      - name: Generate files
-        env:
-          TASK_CPU: 256
-          TASK_MEMORY: 512
-        run: |
-          sed -i -e 's%<COMMIT>%'"${{ github.sha }}"'%' -e 's%<BRANCH>%'"${{ github.ref }}"'%' taskdef.json
-          sed -i -e 's%<AWS_ACCOUNT_ID>%'"${{ secrets.AWS_ACCOUNT_ID }}"'%' taskdef.json
-          sed -i -e 's%<AWS_REGION>%'"${{ secrets.AWS_REGION }}"'%' taskdef.json
-          sed -i -e 's%<TASK_CPU>%'"${{ env.TASK_CPU }}"'%' taskdef.json
-          sed -i -e 's%<TASK_MEMORY>%'"${{ env.TASK_MEMORY }}"'%' taskdef.json
-          sed -i 's/<APP_NAME>/'${{ secrets.APP_NAME }}'/g' appspec.yml taskdef.json
-          sed -i 's/<ENV>/'${{ env.APP_ENV }}'/g' appspec.yml taskdef.json
-          sed -i 's/<SERVICE_PORT>/'${{ secrets.SERVICE_PORT }}'/g' appspec.yml taskdef.json
+        # Set up Docker Buildx for multi-platform builds
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-      - name: Generate artifact
-        id: artifact
-        run: zip -j artifact.zip appspec.yml taskdef.json
-
-      - name: Deploy to S3
-        uses: jakejarvis/s3-sync-action@v0.5.1
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
         with:
-          args: --follow-symlinks --exclude '*' --include 'artifact.zip'
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ env.AWS_REGION }}
-          AWS_S3_BUCKET: "${{ secrets.APP_NAME }}-${{ env.APP_ENV }}-codepipeline"
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker images
+        uses: docker/bake-action@v2.3.0
+        with:
+          push: true
+          files: |
+            compose.yml
+            compose.override.yml
+          set: |
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+
+deploy:
+  needs: build
+  runs-on: ubuntu-latest
+
+  env:
+    SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+    SSH_HOST: ${{ secrets.SSH_HOST }}
+    SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+    BASE_PATH: ${{ vars.BASE_PATH }}
+    JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Copy compose.yml to EC2
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "compose.yml"
+        target: "~/"
+
+    - name: Deploy
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd ~
+          docker compose down
+          docker compose pull
+          docker compose up -d

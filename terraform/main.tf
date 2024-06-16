@@ -32,8 +32,12 @@ module "ecs_prod" {
     health_check_path = local.health_check_path
     app_port = local.app_port
     environment = "production"
-    task_cpu = 256
-    task_memory = 512
+    task_cpu = 512  
+    task_memory = 1024  
+    app_service_cpu = 256  
+    app_service_memory = 512  
+    auth_service_cpu = 256  
+    auth_service_memory = 512  
     certificate_arn = local.certificate_arn
     task_architecture = "ARM64"
 }
