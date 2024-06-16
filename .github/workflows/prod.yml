@@ -3,7 +3,7 @@ name: Build, Test and Deploy to Prod
 on:
   push:
     branches:
-      - aws-deploy
+      - main
 
 env:
   JWT_SECRET: ${{ secrets.JWT_SECRET }}
