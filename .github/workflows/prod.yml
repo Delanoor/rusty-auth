@@ -3,7 +3,7 @@ name: Build, Test and Deploy to Prod
 on:
   push:
     branches:
-      - main
+      - aws-deploy
 
 env:
   JWT_SECRET: ${{ secrets.JWT_SECRET }}
@@ -41,34 +41,36 @@ jobs:
           source .env
           set +o allexport
 
-      - name: Cache dependencies
+      - name: Cache dependencies for auth-service
         uses: actions/cache@v3
         with:
           path: |
-            app-service/.cargo
-            app-service/target/
             auth-service/.cargo
             auth-service/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('auth-service/**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
-      - name: Install Rust
+      - name: Install Rust for auth-service
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
-
-      - name: Build and test app-service code
-        working-directory: ./app-service
-        run: |
-          cargo build --verbose
-          cargo test --verbose
 
       - name: Build and test auth-service code
         working-directory: ./auth-service
         run: |
           cargo build --verbose
           cargo test --verbose
+
+      - name: Install dependencies for app-service
+        working-directory: ./app-service
+        run: |
+          npm install
+
+      - name: Build app-service code
+        working-directory: ./app-service
+        run: |
+          npm run build
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
