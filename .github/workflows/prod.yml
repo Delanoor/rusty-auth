@@ -5,15 +5,12 @@ on:
     branches:
       - main
 
-env:
-  APP_ENV: production
-  DOCKER_HUB_USERNAME: vinorelbine
-  IMAGE_TAG: ${{ github.sha }}
-  SQLX_OFFLINE: true
-
 permissions:
   id-token: write
   contents: read
+
+env:
+  AWS_REGION: us-east-1 # Specify your AWS region
 
 jobs:
   build:
@@ -23,47 +20,40 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Checkout app-service code
-        uses: actions/checkout@v3
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
         with:
-          repository: delanoor/rusty-next
-          token: ${{ secrets.GITHUB_TOKEN }}
-          path: app-service
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Create config.production.yaml file from secrets
+      - name: Fetch secrets from AWS Secrets Manager
+        id: fetch-secrets
         run: |
-          echo "app_address: \"${{ secrets.APP_ADDRESS }}\"" >> config.production.yaml
-          echo "test_app_address: \"${{ secrets.TEST_APP_ADDRESS }}\"" >> config.production.yaml
-          echo "jwt_secret: \"${{ secrets.JWT_SECRET }}\"" >> config.production.yaml
-          echo "postgres:" >> config.production.yaml
-          echo "  database_url: \"${{ secrets.POSTGRES_DATABASE_URL }}\"" >> config.production.yaml
-          echo "  password: \"${{ secrets.POSTGRES_PASSWORD }}\"" >> config.production.yaml
-          echo "redis:" >> config.production.yaml
-          echo "  host_name: \"${{ secrets.REDIS_HOST_NAME }}\"" >> config.production.yaml
-          echo "  password: \"${{ secrets.REDIS_PASSWORD }}\"" >> config.production.yaml
-          echo "  port: \"${{ secrets.REDIS_PORT }}\"" >> config.production.yaml
+          APP_ENV=${{ env.APP_ENV }}
+          SECRET_NAME="rusty-auth/${APP_ENV}"
+          SECRETS=$(aws secretsmanager get-secret-value --secret-id $SECRET_NAME --query SecretString --output text)
+          echo "$SECRETS" > secrets.json
+          jq -r 'to_entries[] | "\(.key)=\(.value)"' secrets.json > .env
 
-      - name: Create config.local.yaml file from secrets
+      - name: Load secrets into environment
         run: |
-          echo "app_address: \"${{ secrets.LOCAL_APP_ADDRESS }}\"" >> config.local.yaml
-          echo "test_app_address: \"${{ secrets.LOCAL_TEST_APP_ADDRESS }}\"" >> config.local.yaml
-          echo "jwt_secret: \"${{ secrets.LOCAL_JWT_SECRET }}\"" >> config.local.yaml
-          echo "postgres:" >> config.local.yaml
-          echo "  database_url: \"${{ secrets.LOCAL_POSTGRES_DATABASE_URL }}\"" >> config.local.yaml
-          echo "  password: \"${{ secrets.LOCAL_POSTGRES_PASSWORD }}\"" >> config.local.yaml
-          echo "redis:" >> config.local.yaml
-          echo "  host_name: \"${{ secrets.LOCAL_REDIS_HOST_NAME }}\"" >> config.local.yaml
-          echo "  password: \"${{ secrets.LOCAL_REDIS_PASSWORD }}\"" >> config.local.yaml
-          echo "  port: \"${{ secrets.LOCAL_REDIS_PORT }}\"" >> config.local.yaml
+          export $(grep -v '^#' .env | xargs)
 
-      - name: Copy configuration file
+      - name: Create config.yaml file
         run: |
-          echo "Copying the appropriate configuration file"
-          if [ "${{ env.APP_ENV }}" == "production" ]; then
-            cp config.production.yaml config.yaml
-          else
-            cp config.local.yaml config.yaml
-          fi
+          cat <<EOT > config.yaml
+          app_address: "$app_address"
+          test_app_address: "$test_app_address"
+          jwt_secret: "$jwt_secret"
+          postgres:
+            database_url: "$postgres_database_url"
+            password: "$postgres_password"
+          redis:
+            host_name: "$redis_host_name"
+            password: "$redis_password"
+            port: "$redis_port"
+          EOT
 
       - name: Cache dependencies for auth-service
         uses: actions/cache@v3

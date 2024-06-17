@@ -28,14 +28,11 @@ pub struct RedisSettings {
 
 impl Settings {
     pub fn new() -> Result<Self, config::ConfigError> {
-        dotenv().ok();
         let app_env = env::var("APP_ENV").unwrap_or_else(|_| "local".into());
         let env_file = match app_env.as_str() {
-            "production" => ".env.production",
-            _ => ".env.local",
+            "production" => "config.production.yaml",
+            _ => "config.local.yaml",
         };
-
-        from_filename(env_file).ok();
 
         let config = Config::builder()
             .add_source(File::with_name(env_file))
