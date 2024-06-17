@@ -1,6 +1,6 @@
-use config::Config;
 use dotenvy::dotenv;
 use serde::{Deserialize, Serialize};
+use std::env;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Settings {
@@ -12,14 +12,12 @@ pub struct Settings {
 }
 
 #[derive(Deserialize, Serialize, Clone)]
-
 pub struct PostgresSettings {
     pub database_url: String,
     pub password: String,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
-
 pub struct RedisSettings {
     pub host_name: String,
     pub password: String,
@@ -30,16 +28,45 @@ impl Settings {
     pub fn new() -> Result<Self, config::ConfigError> {
         dotenv().ok();
 
-        let run_mode = std::env::var("RUN_MODE").unwrap_or_else(|_| "local".into());
-        let config_file = match run_mode.as_str() {
-            "production" => "config.production.yaml",
-            _ => "config.local.yaml",
+        let run_mode = env::var("RUN_MODE").unwrap_or_else(|_| "local".into());
+        let (app_address, test_app_address, jwt_secret, postgres, redis) = match run_mode.as_str() {
+            "production" => (
+                env::var("APP_ADDRESS").unwrap(),
+                env::var("TEST_APP_ADDRESS").unwrap(),
+                env::var("JWT_SECRET").unwrap(),
+                PostgresSettings {
+                    database_url: env::var("POSTGRES_DATABASE_URL").unwrap(),
+                    password: env::var("POSTGRES_PASSWORD").unwrap(),
+                },
+                RedisSettings {
+                    host_name: env::var("REDIS_HOST_NAME").unwrap(),
+                    password: env::var("REDIS_PASSWORD").unwrap(),
+                    port: env::var("REDIS_PORT").unwrap(),
+                },
+            ),
+            _ => (
+                env::var("LOCAL_APP_ADDRESS").unwrap(),
+                env::var("LOCAL_TEST_APP_ADDRESS").unwrap(),
+                env::var("LOCAL_JWT_SECRET").unwrap(),
+                PostgresSettings {
+                    database_url: env::var("LOCAL_POSTGRES_DATABASE_URL").unwrap(),
+                    password: env::var("LOCAL_POSTGRES_PASSWORD").unwrap(),
+                },
+                RedisSettings {
+                    host_name: env::var("LOCAL_REDIS_HOST_NAME").unwrap(),
+                    password: env::var("LOCAL_REDIS_PASSWORD").unwrap(),
+                    port: env::var("LOCAL_REDIS_PORT").unwrap(),
+                },
+            ),
         };
-        let settings = Config::builder()
-            .add_source(config::File::new(config_file, config::FileFormat::Yaml))
-            .build()?;
 
-        settings.try_deserialize::<Settings>()
+        Ok(Settings {
+            app_address,
+            test_app_address,
+            jwt_secret,
+            postgres,
+            redis,
+        })
     }
 }
 

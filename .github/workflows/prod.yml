@@ -6,8 +6,7 @@ on:
       - main
 
 env:
-  JWT_SECRET: ${{ secrets.JWT_SECRET }}
-  BASE_PATH: ${{ vars.BASE_PATH }}
+  APP_ENV: production
   DOCKER_HUB_USERNAME: vinorelbine
   IMAGE_TAG: ${{ github.sha }}
   SQLX_OFFLINE: true
@@ -31,14 +30,31 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           path: app-service
 
-      - name: Create env file from secret
-        run: echo "${{ secrets.ENV }}" > .env
+      - name: Create .env file from secrets
+        run: |
+          echo "APP_ADDRESS=${{ secrets.APP_ADDRESS }}" >> .env.production
+          echo "TEST_APP_ADDRESS=${{ secrets.TEST_APP_ADDRESS }}" >> .env.production
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env.production
+          echo "POSTGRES_DATABASE_URL=${{ secrets.POSTGRES_DATABASE_URL }}" >> .env.production
+          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.production
+          echo "REDIS_HOST_NAME=${{ secrets.REDIS_HOST_NAME }}" >> .env.production
+          echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >> .env.production
+          echo "REDIS_PORT=${{ secrets.REDIS_PORT }}" >> .env.production
+
+          echo "APP_ADDRESS=${{ secrets.LOCAL_APP_ADDRESS }}" >> .env.local
+          echo "TEST_APP_ADDRESS=${{ secrets.LOCAL_TEST_APP_ADDRESS }}" >> .env.local
+          echo "JWT_SECRET=${{ secrets.LOCAL_JWT_SECRET }}" >> .env.local
+          echo "POSTGRES_DATABASE_URL=${{ secrets.LOCAL_POSTGRES_DATABASE_URL }}" >> .env.local
+          echo "POSTGRES_PASSWORD=${{ secrets.LOCAL_POSTGRES_PASSWORD }}" >> .env.local
+          echo "REDIS_HOST_NAME=${{ secrets.LOCAL_REDIS_HOST_NAME }}" >> .env.local
+          echo "REDIS_PASSWORD=${{ secrets.LOCAL_REDIS_PASSWORD }}" >> .env.local
+          echo "REDIS_PORT=${{ secrets.LOCAL_REDIS_PORT }}" >> .env.local
 
       - name: Load .env
         run: |
-          echo "Loading environment variables from .env file"
+          echo "Loading environment variables from .env.production file"
           set -o allexport
-          source .env
+          source .env.production
           set +o allexport
 
       - name: Cache dependencies for auth-service
@@ -59,9 +75,9 @@ jobs:
       - name: Build and test auth-service code
         working-directory: ./auth-service
         run: |
-          export JWT_SECRET=secret
+          export JWT_SECRET=${{ secrets.JWT_SECRET }}
           export SQLX_OFFLINE=${{ env.SQLX_OFFLINE }}
-          export DATABASE_URL=postgres://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432
+          export DATABASE_URL=${{ secrets.POSTGRES_DATABASE_URL }}
           cargo build --verbose
           cargo test --verbose
 
@@ -100,13 +116,13 @@ jobs:
         run: |
           cd auth-service
           docker build \
-            --build-arg DATABASE_URL=${{ env.DATABASE_URL }} \
-            --build-arg JWT_SECRET=${{ env.JWT_SECRET }} \
+            --build-arg DATABASE_URL=${{ secrets.POSTGRES_DATABASE_URL }} \
+            --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }} \
             --build-arg SQLX_OFFLINE=${{ env.SQLX_OFFLINE }} \
-            --build-arg POSTGRES_PASSWORD=${{ env.POSTGRES_PASSWORD }} \
-            --build-arg REDIS_HOST_NAME=${{ env.REDIS_HOST_NAME }} \
-            --build-arg REDIS_PASSWORD=${{ env.REDIS_PASSWORD }} \
-            --build-arg REDIS_PORT=${{ env.REDIS_PORT }} \
+            --build-arg POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+            --build-arg REDIS_HOST_NAME=${{ secrets.REDIS_HOST_NAME }} \
+            --build-arg REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }} \
+            --build-arg REDIS_PORT=${{ secrets.REDIS_PORT }} \
             -t ${{ env.DOCKER_HUB_USERNAME }}/auth-service:auth-service-${{ env.IMAGE_TAG }} \
             -t ${{ env.DOCKER_HUB_USERNAME }}/auth-service:auth-service-latest .
           docker push ${{ env.DOCKER_HUB_USERNAME }}/auth-service:auth-service-${{ env.IMAGE_TAG }}
@@ -133,14 +149,14 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Copy .env and compose.yml to EC2
+      - name: Copy .env.production and compose.yml to EC2
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: |
-            .env
+            .env.production
             compose.yml
           target: "~/"
 
