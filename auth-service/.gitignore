@@ -1,6 +1,9 @@
 /target
 .env
 
+.env.local
+.env.production
+
 
 config.yaml
 config.production.yaml
