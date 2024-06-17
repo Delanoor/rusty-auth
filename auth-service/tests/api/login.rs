@@ -6,7 +6,7 @@ use crate::helpers::{get_random_email, TestApp};
 
 #[tokio::test]
 async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let random_email = get_random_email();
 
@@ -34,11 +34,13 @@ async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
         .expect("No auth cookie found");
 
     assert!(!auth_cookie.value().is_empty());
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
 async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
     let random_email = Email::parse(get_random_email()).unwrap();
 
     let signup_body = serde_json::json!({
@@ -65,6 +67,7 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
         .await
         .expect("Could not deserialize response body to TwoFactorAuthResponse");
 
+    app.clean_up().await;
     let two_fa_code_store = app.two_fa_code_store.read().await;
 
     let get_response = two_fa_code_store.get_code(&random_email).await;
@@ -74,7 +77,7 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
 
 #[tokio::test]
 async fn should_return_400_if_invalid() {
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let body = serde_json::json!({
         "email": get_random_email(),
@@ -84,11 +87,13 @@ async fn should_return_400_if_invalid() {
     let response = app.post_login(&body).await;
 
     assert_eq!(response.status().as_u16(), 400);
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
 async fn should_return_401_if_incorrect_credentials() {
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
     let body_signup = serde_json::json!({
         "email": "test@email.com",
         "password": "pwds1234",
@@ -104,11 +109,13 @@ async fn should_return_401_if_incorrect_credentials() {
     });
     let response = app.post_login(&body).await;
     assert_eq!(response.status().as_u16(), 401);
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
 async fn should_return_422_if_malformed_credentials() {
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let body = serde_json::json!({
     "email": get_random_email()
@@ -117,4 +124,6 @@ async fn should_return_422_if_malformed_credentials() {
     let response = app.post_login(&body).await;
 
     assert_eq!(response.status().as_u16(), 422);
+
+    app.clean_up().await
 }

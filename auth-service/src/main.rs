@@ -7,21 +7,25 @@ use auth_service::services::data_stores::postgres_user_store::PostgresUserStore;
 use auth_service::services::data_stores::redis_banned_token_store::RedisBannedTokenStore;
 use auth_service::services::data_stores::redis_two_fa_code_store::RedisTwoFACodeStore;
 
-use auth_service::utils::constants::{
-    prod, DATABASE_URL, REDIS_HOST_NAME, REDIS_PASSWORD, REDIS_PORT,
-};
+use auth_service::utils::configuration::{get_configuration, PostgresSettings, RedisSettings};
 
+use auth_service::utils::tracing::init_tracing;
 use auth_service::{get_postgres_pool, get_redis_client, Application};
 use sqlx::PgPool;
 use tokio::sync::RwLock;
 
 #[tokio::main]
 async fn main() {
-    let pg_pool = configure_postgresql()
+    init_tracing();
+    let configuration = get_configuration().expect("Failed to get configurations");
+
+    let postgres_settings = &configuration.postgres;
+    let redis_settings = &configuration.redis;
+    let pg_pool: sqlx::Pool<sqlx::Postgres> = configure_postgresql(&postgres_settings)
         .await
         .expect("Failed to configure PostgreSQL");
-    let redis_config = configure_redis();
-    let redis_code_config = configure_redis();
+    let redis_config = configure_redis(&redis_settings);
+    let redis_code_config = configure_redis(&redis_settings);
 
     let user_store = Arc::new(RwLock::new(PostgresUserStore::new(pg_pool)));
     let token_store = Arc::new(RwLock::new(RedisBannedTokenStore::new(Arc::new(
@@ -32,20 +36,29 @@ async fn main() {
     ))));
     let email_client = Arc::new(RwLock::new(MockEmailClient));
 
-    let app_state: AppState =
-        AppState::new(user_store, token_store, two_fa_code_store, email_client);
-    let app: Application = Application::build(app_state, prod::APP_ADDRESS)
+    let app_state: AppState = AppState::new(
+        user_store,
+        token_store,
+        two_fa_code_store,
+        email_client,
+        configuration.clone(),
+    );
+    let app: Application = Application::build(app_state, &configuration.app_address)
         .await
         .expect("Failed to build application");
 
     app.run().await.expect("Failed to run application");
 }
 
-async fn configure_postgresql() -> Result<PgPool, Box<dyn std::error::Error>> {
-    let pg_pool = get_postgres_pool(&DATABASE_URL).await.map_err(|e| {
-        eprintln!("Failed to create Postgres connection pool: {:?}", e);
-        e
-    })?;
+async fn configure_postgresql(
+    settings: &PostgresSettings,
+) -> Result<PgPool, Box<dyn std::error::Error>> {
+    let pg_pool = get_postgres_pool(&settings.database_url)
+        .await
+        .map_err(|e| {
+            eprintln!("Failed to create Postgres connection pool: {:?}", e);
+            e
+        })?;
 
     // run db migrations against our test database
     sqlx::migrate!()
@@ -56,11 +69,11 @@ async fn configure_postgresql() -> Result<PgPool, Box<dyn std::error::Error>> {
     Ok(pg_pool)
 }
 
-fn configure_redis() -> redis::Connection {
+fn configure_redis(settings: &RedisSettings) -> redis::Connection {
     get_redis_client(
-        REDIS_HOST_NAME.to_string(),
-        REDIS_PASSWORD.to_string(),
-        REDIS_PORT.to_string(),
+        settings.host_name.to_owned(),
+        settings.password.to_owned(),
+        settings.port.to_owned(),
     )
     .expect("Failed to get Redis client")
     .get_connection()

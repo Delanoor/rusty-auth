@@ -6,7 +6,7 @@ use auth_service::{
         redis_banned_token_store::RedisBannedTokenStore,
         redis_two_fa_code_store::RedisTwoFACodeStore,
     },
-    utils::constants::{test, DATABASE_URL, REDIS_HOST_NAME, REDIS_PASSWORD, REDIS_PORT},
+    utils::configuration::{get_configuration, PostgresSettings, RedisSettings},
     Application,
 };
 use reqwest::cookie::Jar;
@@ -32,7 +32,10 @@ pub struct TestApp {
 
 impl TestApp {
     pub async fn new() -> Self {
-        let pg_pool = configure_postgresql().await;
+        let configuration = get_configuration().expect("Failed to read configuration.");
+        let postgres_settings = &configuration.postgres;
+        let redis_settings = &configuration.redis;
+        let pg_pool = configure_postgresql(postgres_settings).await;
 
         let db_name = match pg_pool.connect_options().get_database() {
             Some(name) => name.to_owned(),
@@ -41,8 +44,8 @@ impl TestApp {
             }
         };
 
-        let redis_config = configure_redis();
-        let redis_two_fa_conig = configure_redis();
+        let redis_config = configure_redis(redis_settings);
+        let redis_two_fa_conig = configure_redis(redis_settings);
 
         let user_store = Arc::new(RwLock::new(PostgresUserStore::new(pg_pool)));
         let token_store = Arc::new(RwLock::new(RedisBannedTokenStore::new(Arc::new(
@@ -58,10 +61,12 @@ impl TestApp {
             token_store.clone(),
             two_fa_code_store.clone(),
             email_client.clone(),
+            configuration.clone(),
         );
-        let app: Application = Application::build(app_state.clone(), test::APP_ADDRESS)
-            .await
-            .expect("Failed to build app");
+        let app: Application =
+            Application::build(app_state.clone(), &configuration.test_app_address)
+                .await
+                .expect("Failed to build app");
 
         let address = format!("http://{}", app.address.clone());
 
@@ -152,9 +157,9 @@ impl TestApp {
     }
 
     pub async fn clean_up(&mut self) {
-        if self.clean_up_called {
-            return;
-        }
+        // if self.clean_up_called {
+        //     return;
+        // }
         delete_database(&self.db_name).await;
 
         self.clean_up_called = true;
@@ -173,8 +178,8 @@ pub fn get_random_email() -> String {
     format!("{}@example.com", Uuid::new_v4())
 }
 
-async fn configure_postgresql() -> PgPool {
-    let postgresql_conn_url = DATABASE_URL.to_owned();
+async fn configure_postgresql(settings: &PostgresSettings) -> PgPool {
+    let postgresql_conn_url = settings.database_url.to_owned();
 
     let db_name = Uuid::new_v4().to_string();
 
@@ -214,19 +219,26 @@ async fn configure_database(db_conn_string: &str, db_name: &str) {
         .expect("Failed to migrate the database.");
 }
 
-fn configure_redis() -> redis::Connection {
-    get_redis_client(
-        REDIS_PASSWORD.to_string(),
-        REDIS_HOST_NAME.to_string(),
-        REDIS_PORT.to_string(),
-    )
-    .expect("Failed to get Redis client")
-    .get_connection()
-    .expect("Failed to get Redis connection")
+fn configure_redis(settings: &RedisSettings) -> redis::Connection {
+    let client = if settings.password.is_empty() {
+        redis::Client::open(format!("redis://{}:{}/", settings.host_name, settings.port))
+    } else {
+        redis::Client::open(format!(
+            "redis://:{}@{}:{}/",
+            settings.password, settings.host_name, settings.port
+        ))
+    };
+
+    client
+        .expect("Failed to create Redis client")
+        .get_connection()
+        .expect("Failed to")
 }
 
 async fn delete_database(db_name: &str) {
-    let postgresql_conn_url = DATABASE_URL.to_owned();
+    let configuration = get_configuration().expect("Failed to read configuration.");
+
+    let postgresql_conn_url = configuration.postgres.database_url.to_owned();
 
     let connection_options = PgConnectOptions::from_str(&postgresql_conn_url)
         .expect("Failed to parse PostgreSQL connection string");

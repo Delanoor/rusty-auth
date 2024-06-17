@@ -12,9 +12,12 @@ use redis::{Client, RedisResult};
 use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::error::Error;
-use utils::constants::env::{BASE_PATH, DROPLET_IP};
+use utils::{
+    constants::env::{BASE_PATH, DROPLET_IP},
+    tracing::{make_span_with_request_id, on_request, on_response},
+};
 
-use tower_http::{cors::CorsLayer, services::ServeDir};
+use tower_http::{cors::CorsLayer, services::ServeDir, trace::TraceLayer};
 
 pub struct Application {
     server: Serve<Router, Router>,
@@ -32,13 +35,12 @@ use routes::{login, logout, signup, verify_2fa, verify_token};
 impl Application {
     pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> {
         let droplet_ip = DROPLET_IP;
-        let base_path = BASE_PATH;
-        let allowed_origins: [axum::http::HeaderValue; 5] = [
-            "http://localhost:8000".parse()?,
+
+        let allowed_origins: [axum::http::HeaderValue; 4] = [
+            "http://localhost:3000".parse()?,
             "http://localhost:8080".parse()?,
             "http://172.17.0.1".parse()?,
             format!("https://{}:8000", droplet_ip).parse()?,
-            format!("{}/app", base_path).parse()?,
         ];
 
         let cors = CorsLayer::new()
@@ -53,7 +55,13 @@ impl Application {
             .route("/verify-2fa", post(verify_2fa))
             .route("/verify-token", post(verify_token))
             .with_state(app_state)
-            .layer(cors);
+            .layer(cors)
+            .layer(
+                TraceLayer::new_for_http()
+                    .make_span_with(make_span_with_request_id)
+                    .on_request(on_request)
+                    .on_response(on_response),
+            );
 
         let listener = tokio::net::TcpListener::bind(address).await?;
         let address = listener.local_addr()?.to_string();
@@ -63,7 +71,7 @@ impl Application {
     }
 
     pub async fn run(self) -> Result<(), std::io::Error> {
-        println!("listening on {}", &self.address);
+        tracing::info!("listening on {}", &self.address);
         self.server.await
     }
 }
@@ -105,9 +113,13 @@ pub fn get_redis_client(
     redis_password: String,
     redis_port: String,
 ) -> RedisResult<Client> {
-    let redis_url = format!(
-        "rediss://default:{}@{}:{}",
-        redis_password, redis_hostname, redis_port
-    );
+    let redis_url = if redis_password.is_empty() {
+        format!("redis://{}:{}/", redis_hostname, redis_port)
+    } else {
+        format!(
+            "rediss://default:{}@{}:{}",
+            redis_password, redis_hostname, redis_port
+        )
+    };
     redis::Client::open(redis_url)
 }
