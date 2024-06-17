@@ -1,4 +1,6 @@
-use dotenvy::dotenv;
+use config::{Config, File, FileFormat};
+
+use dotenvy::{dotenv, from_filename};
 use serde::{Deserialize, Serialize};
 use std::env;
 
@@ -27,46 +29,19 @@ pub struct RedisSettings {
 impl Settings {
     pub fn new() -> Result<Self, config::ConfigError> {
         dotenv().ok();
-
-        let run_mode = env::var("RUN_MODE").unwrap_or_else(|_| "local".into());
-        let (app_address, test_app_address, jwt_secret, postgres, redis) = match run_mode.as_str() {
-            "production" => (
-                env::var("APP_ADDRESS").unwrap(),
-                env::var("TEST_APP_ADDRESS").unwrap(),
-                env::var("JWT_SECRET").unwrap(),
-                PostgresSettings {
-                    database_url: env::var("POSTGRES_DATABASE_URL").unwrap(),
-                    password: env::var("POSTGRES_PASSWORD").unwrap(),
-                },
-                RedisSettings {
-                    host_name: env::var("REDIS_HOST_NAME").unwrap(),
-                    password: env::var("REDIS_PASSWORD").unwrap(),
-                    port: env::var("REDIS_PORT").unwrap(),
-                },
-            ),
-            _ => (
-                env::var("LOCAL_APP_ADDRESS").unwrap(),
-                env::var("LOCAL_TEST_APP_ADDRESS").unwrap(),
-                env::var("LOCAL_JWT_SECRET").unwrap(),
-                PostgresSettings {
-                    database_url: env::var("LOCAL_POSTGRES_DATABASE_URL").unwrap(),
-                    password: env::var("LOCAL_POSTGRES_PASSWORD").unwrap(),
-                },
-                RedisSettings {
-                    host_name: env::var("LOCAL_REDIS_HOST_NAME").unwrap(),
-                    password: env::var("LOCAL_REDIS_PASSWORD").unwrap(),
-                    port: env::var("LOCAL_REDIS_PORT").unwrap(),
-                },
-            ),
+        let app_env = env::var("APP_ENV").unwrap_or_else(|_| "local".into());
+        let env_file = match app_env.as_str() {
+            "production" => ".env.production",
+            _ => ".env.local",
         };
 
-        Ok(Settings {
-            app_address,
-            test_app_address,
-            jwt_secret,
-            postgres,
-            redis,
-        })
+        from_filename(env_file).ok();
+
+        let config = Config::builder()
+            .add_source(File::with_name(env_file))
+            .build()?;
+
+        config.try_deserialize::<Settings>()
     }
 }
 
