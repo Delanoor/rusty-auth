@@ -30,32 +30,40 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           path: app-service
 
-      - name: Create .env file from secrets
+      - name: Create config.production.yaml file from secrets
         run: |
-          echo "APP_ADDRESS=${{ secrets.APP_ADDRESS }}" >> .env.production
-          echo "TEST_APP_ADDRESS=${{ secrets.TEST_APP_ADDRESS }}" >> .env.production
-          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env.production
-          echo "POSTGRES_DATABASE_URL=${{ secrets.POSTGRES_DATABASE_URL }}" >> .env.production
-          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.production
-          echo "REDIS_HOST_NAME=${{ secrets.REDIS_HOST_NAME }}" >> .env.production
-          echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >> .env.production
-          echo "REDIS_PORT=${{ secrets.REDIS_PORT }}" >> .env.production
+          echo "app_address: \"${{ secrets.APP_ADDRESS }}\"" >> config.production.yaml
+          echo "test_app_address: \"${{ secrets.TEST_APP_ADDRESS }}\"" >> config.production.yaml
+          echo "jwt_secret: \"${{ secrets.JWT_SECRET }}\"" >> config.production.yaml
+          echo "postgres:" >> config.production.yaml
+          echo "  database_url: \"${{ secrets.POSTGRES_DATABASE_URL }}\"" >> config.production.yaml
+          echo "  password: \"${{ secrets.POSTGRES_PASSWORD }}\"" >> config.production.yaml
+          echo "redis:" >> config.production.yaml
+          echo "  host_name: \"${{ secrets.REDIS_HOST_NAME }}\"" >> config.production.yaml
+          echo "  password: \"${{ secrets.REDIS_PASSWORD }}\"" >> config.production.yaml
+          echo "  port: \"${{ secrets.REDIS_PORT }}\"" >> config.production.yaml
 
-          echo "APP_ADDRESS=${{ secrets.LOCAL_APP_ADDRESS }}" >> .env.local
-          echo "TEST_APP_ADDRESS=${{ secrets.LOCAL_TEST_APP_ADDRESS }}" >> .env.local
-          echo "JWT_SECRET=${{ secrets.LOCAL_JWT_SECRET }}" >> .env.local
-          echo "POSTGRES_DATABASE_URL=${{ secrets.LOCAL_POSTGRES_DATABASE_URL }}" >> .env.local
-          echo "POSTGRES_PASSWORD=${{ secrets.LOCAL_POSTGRES_PASSWORD }}" >> .env.local
-          echo "REDIS_HOST_NAME=${{ secrets.LOCAL_REDIS_HOST_NAME }}" >> .env.local
-          echo "REDIS_PASSWORD=${{ secrets.LOCAL_REDIS_PASSWORD }}" >> .env.local
-          echo "REDIS_PORT=${{ secrets.LOCAL_REDIS_PORT }}" >> .env.local
-
-      - name: Load .env
+      - name: Create config.local.yaml file from secrets
         run: |
-          echo "Loading environment variables from .env.production file"
-          set -o allexport
-          source .env.production
-          set +o allexport
+          echo "app_address: \"${{ secrets.LOCAL_APP_ADDRESS }}\"" >> config.local.yaml
+          echo "test_app_address: \"${{ secrets.LOCAL_TEST_APP_ADDRESS }}\"" >> config.local.yaml
+          echo "jwt_secret: \"${{ secrets.LOCAL_JWT_SECRET }}\"" >> config.local.yaml
+          echo "postgres:" >> config.local.yaml
+          echo "  database_url: \"${{ secrets.LOCAL_POSTGRES_DATABASE_URL }}\"" >> config.local.yaml
+          echo "  password: \"${{ secrets.LOCAL_POSTGRES_PASSWORD }}\"" >> config.local.yaml
+          echo "redis:" >> config.local.yaml
+          echo "  host_name: \"${{ secrets.LOCAL_REDIS_HOST_NAME }}\"" >> config.local.yaml
+          echo "  password: \"${{ secrets.LOCAL_REDIS_PASSWORD }}\"" >> config.local.yaml
+          echo "  port: \"${{ secrets.LOCAL_REDIS_PORT }}\"" >> config.local.yaml
+
+      - name: Copy configuration file
+        run: |
+          echo "Copying the appropriate configuration file"
+          if [ "${{ env.APP_ENV }}" == "production" ]; then
+            cp config.production.yaml config.yaml
+          else
+            cp config.local.yaml config.yaml
+          fi
 
       - name: Cache dependencies for auth-service
         uses: actions/cache@v3
@@ -75,9 +83,6 @@ jobs:
       - name: Build and test auth-service code
         working-directory: ./auth-service
         run: |
-          export JWT_SECRET=${{ secrets.JWT_SECRET }}
-          export SQLX_OFFLINE=${{ env.SQLX_OFFLINE }}
-          export DATABASE_URL=${{ secrets.POSTGRES_DATABASE_URL }}
           cargo build --verbose
           cargo test --verbose
 
@@ -149,14 +154,14 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Copy .env.production and compose.yml to EC2
+      - name: Copy configuration and compose.yml to EC2
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: |
-            .env.production
+            config.yaml
             compose.yml
           target: "~/"
 
