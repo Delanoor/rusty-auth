@@ -1,13 +1,31 @@
 use std::time::Duration;
 
 use axum::{body::Body, extract::Request, response::Response};
+use color_eyre::eyre::Result;
 use tracing::{Level, Span};
+use tracing_error::ErrorLayer;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{fmt, EnvFilter};
 
-pub fn init_tracing() {
-    tracing_subscriber::fmt()
-        .compact()
-        .with_max_level(tracing::Level::DEBUG)
+pub fn init_tracing() -> Result<()> {
+    let fmt_layer = fmt::layer().compact();
+
+    // Create a filter layer to control the verbosity of logs
+    // Try to get the filter config from the environment variables
+    // if fails, default to "info" log level
+
+    let filter_layer = EnvFilter::try_from_default_env().or_else(|_| EnvFilter::try_new("info"))?;
+
+    // Build the tracing subscriber registry with the formatting layer, filter layer,
+    // and the error layer for enhanced error reporting
+
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(fmt_layer)
+        .with(ErrorLayer::default())
         .init();
+
+    Ok(())
 }
 
 // Creates a new tracing span with a unique request ID for each incoming request.

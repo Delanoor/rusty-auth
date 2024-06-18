@@ -1,14 +1,11 @@
-FROM rust:1 AS chef 
+# First stage: Rust build environment
+FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
 USER root
 
 # Add cargo-chef to cache dependencies
-RUN cargo install cargo-chef
-
-# Install protobuf compiler
-# RUN apk add --no-cache protobuf
-
+# RUN apk update add --no-cache musl-dev libssl-dev & cargo install cargo-chef
 WORKDIR /app
-
+ 
 FROM chef AS planner
 COPY . .
 # Capture info needed to build dependencies
@@ -23,12 +20,18 @@ COPY . .
 ENV SQLX_OFFLINE true
 RUN cargo build --release --bin auth-service
 
-# We do not need the Rust toolchain to run the binary!
-# Start with a minimal image and copy over the binary and assets folder.
-FROM debian:buster-slim AS runtime
+
+# Final stage: minimal runtime environment
+FROM debian:bookworm-slim AS runtime
+RUN apt-get update && apt install -y \
+    openssl \
+    ca-certificates
 WORKDIR /app
 COPY --from=builder /app/target/release/auth-service /usr/local/bin
 COPY --from=builder /app/assets /app/assets
+
+COPY config.production.yaml /app/config.production.yaml
+
 
 # Set environment variables for runtime
 ENV REDIS_HOST_NAME=redis
@@ -39,5 +42,4 @@ ENV REDIS_HOST_NAME=${REDIS_HOST_NAME}
 ENV REDIS_PASSWORD=${REDIS_PASSWORD}
 ENV REDIS_PORT=${REDIS_PORT}
 
-EXPOSE 3000
 ENTRYPOINT ["/usr/local/bin/auth-service"]

@@ -5,9 +5,9 @@ services:
     image: vinorelbine/rusty-next:latest
     restart: "always"
     environment:
-      NEXT_PUBLIC_API_URL: http://auth-service:3000
+      NEXT_PUBLIC_API_URL: http://auth-service:8000
     ports:
-      - "8000:8000"
+      - "3000:3000"
     depends_on:
       auth-service:
         condition: service_started
@@ -26,7 +26,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_PORT: ${REDIS_PORT}
     ports:
-      - "3000:3000"
+      - "8000:8000"
     depends_on:
       - db
     networks:

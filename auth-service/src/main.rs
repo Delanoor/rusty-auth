@@ -16,7 +16,9 @@ use tokio::sync::RwLock;
 
 #[tokio::main]
 async fn main() {
-    init_tracing();
+    color_eyre::install().expect("Failed to install color_eyre");
+    init_tracing().expect("Failed to initialize tracing");
+
     let configuration = get_configuration().expect("Failed to get configurations");
 
     let postgres_settings = &configuration.postgres;
