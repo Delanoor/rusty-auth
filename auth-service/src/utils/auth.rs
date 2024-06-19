@@ -1,19 +1,23 @@
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use chrono::Utc;
-use jsonwebtoken::{decode, encode, errors::ErrorKind, DecodingKey, EncodingKey, Validation};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Validation};
+use secrecy::{ExposeSecret, Secret};
 use serde::{Deserialize, Serialize};
 
 use crate::{app_state::TokenStoreType, domain::email::Email};
+use color_eyre::eyre::{eyre, Context, ContextCompat, Result};
 
-use super::constants::{JWT_COOKIE_NAME, JWT_SECRET};
+use super::configuration::{get_configuration, JWT_COOKIE_NAME};
 
 // Create cookie with a new JWT auth token
-pub fn generate_auth_cookie(email: &Email) -> Result<Cookie<'static>, GenerateTokenError> {
+#[tracing::instrument(name = "Generating auth cookie", skip_all)]
+pub fn generate_auth_cookie(email: &Email) -> Result<Cookie<'static>> {
     let token = generate_auth_token(email)?;
     Ok(create_auth_cookie(token))
 }
 
 // Create cookie and set the value to the passed-in token string
+#[tracing::instrument(name = "Creating auth cookie", skip_all)]
 fn create_auth_cookie(token: String) -> Cookie<'static> {
     let cookie = Cookie::build((JWT_COOKIE_NAME, token))
         .path("/") // apply cookie to all URLs on the server
@@ -34,63 +38,62 @@ pub enum GenerateTokenError {
 pub const TOKEN_TTL_SECONDS: i64 = 600; // 10 min
 
 // Create JWT auth token
-fn generate_auth_token(email: &Email) -> Result<String, GenerateTokenError> {
+#[tracing::instrument(name = "Generating auth token", skip_all)]
+fn generate_auth_token(email: &Email) -> Result<String> {
     let delta = chrono::Duration::try_seconds(TOKEN_TTL_SECONDS)
-        .ok_or(GenerateTokenError::UnexpectedError)?;
+        .wrap_err("failed to create 10 minute time delta")?;
 
     // Create JWT expiration time
     let exp = Utc::now()
         .checked_add_signed(delta)
-        .ok_or(GenerateTokenError::UnexpectedError)?
+        .ok_or(eyre!("failed to add 10 minutes to current time"))?
         .timestamp();
 
-    let exp: usize = exp
-        .try_into()
-        .map_err(|_| GenerateTokenError::UnexpectedError)?;
-
-    let sub = email.as_ref().to_owned();
+    let exp: usize = exp.try_into().wrap_err(format!(
+        "failed to cast exp time to usize. exp time: {}",
+        exp
+    ))?;
+    let sub = email.as_ref().expose_secret().to_owned();
 
     let claims = Claims { sub, exp };
 
-    create_token(&claims).map_err(GenerateTokenError::TokenError)
+    create_token(&claims)
 }
 
 // Check if JWT auth token is valid by decoding it using the JWT secret
-pub async fn validate_token(
-    token_store: TokenStoreType,
-    token: &str,
-) -> Result<Claims, jsonwebtoken::errors::Error> {
+#[tracing::instrument(name = "Validating JWT auth token", skip_all)]
+pub async fn validate_token(token_store: TokenStoreType, token: Secret<String>) -> Result<Claims> {
+    let configuration = get_configuration().expect("Failed to get configuration.");
     let banned_token_store = token_store.read().await;
 
-    match banned_token_store.contains_token(token).await {
+    match banned_token_store.contains_token(token.to_owned()).await {
         Ok(value) => {
-            if value == true {
-                println!("This token is banned");
-                return Err(jsonwebtoken::errors::Error::from(
-                    jsonwebtoken::errors::ErrorKind::InvalidToken,
-                ));
-            } else {
-                let claims = decode::<Claims>(
-                    token,
-                    &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
-                    &Validation::default(),
-                )
-                .map(|data| data.claims);
-
-                return claims;
+            if value {
+                return Err(eyre!("token is banned"));
             }
         }
-        Err(_) => return Err(jsonwebtoken::errors::Error::from(ErrorKind::InvalidToken)),
+        Err(e) => return Err(e.into()),
     }
+
+    decode(
+        token.expose_secret(),
+        &DecodingKey::from_secret(configuration.jwt_secret.expose_secret().as_bytes()),
+        &Validation::default(),
+    )
+    .map(|data| data.claims)
+    .wrap_err("failed to decode token")
 }
 
 // Create JWT auth token by encoding claims using the JWT secret
-fn create_token(claims: &Claims) -> Result<String, jsonwebtoken::errors::Error> {
+#[tracing::instrument(name = "Creating JWT auth token", skip_all)]
+fn create_token(claims: &Claims) -> Result<String> {
+    let configuration = get_configuration().expect("Failed to get configuration.");
     encode(
         &jsonwebtoken::Header::default(),
         &claims,
-        &EncodingKey::from_secret(JWT_SECRET.as_bytes()),
+        &EncodingKey::from_secret(configuration.jwt_secret.expose_secret().as_bytes()),
     )
+    .wrap_err("failed to create token")
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -102,11 +105,13 @@ pub struct Claims {
 #[cfg(test)]
 mod tests {
 
+    use secrecy::Secret;
+
     use super::*;
 
     #[tokio::test]
     async fn test_generate_auth_cookie() {
-        let email = Email::parse("test@example.com".to_string()).unwrap();
+        let email: Email = Email::parse(Secret::new("test@example.com".to_string())).unwrap();
         let cookie = generate_auth_cookie(&email).unwrap();
         assert_eq!(cookie.name(), JWT_COOKIE_NAME);
         assert_eq!(cookie.value().split('.').count(), 3);
@@ -128,7 +133,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_generate_auth_token() {
-        let email = Email::parse("test@example.com".to_string()).unwrap();
+        let email = Email::parse(Secret::new("test@example.com".to_string())).unwrap();
         let result = generate_auth_token(&email).unwrap();
         assert_eq!(result.split('.').count(), 3);
     }

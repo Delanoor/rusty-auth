@@ -1,6 +1,6 @@
 use auth_service::{
     app_state::{AppState, EmailClientType, TokenStoreType, TwoFACodeStoreType},
-    get_postgres_pool, get_redis_client,
+    get_postgres_pool,
     services::data_stores::{
         mock_email_client::MockEmailClient, postgres_user_store::PostgresUserStore,
         redis_banned_token_store::RedisBannedTokenStore,
@@ -10,6 +10,7 @@ use auth_service::{
     Application,
 };
 use reqwest::cookie::Jar;
+use secrecy::{ExposeSecret, Secret};
 use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions},
     Connection, Executor, PgConnection, PgPool,
@@ -183,11 +184,12 @@ async fn configure_postgresql(settings: &PostgresSettings) -> PgPool {
 
     let db_name = Uuid::new_v4().to_string();
 
-    configure_database(&postgresql_conn_url, &db_name).await;
+    configure_database(&postgresql_conn_url.expose_secret(), &db_name).await;
 
-    let postgresql_conn_url_with_db = format!("{}/{}", postgresql_conn_url, db_name);
+    let postgresql_conn_url_with_db =
+        format!("{}/{}", postgresql_conn_url.expose_secret(), db_name);
 
-    get_postgres_pool(&postgresql_conn_url_with_db)
+    get_postgres_pool(&Secret::new(postgresql_conn_url_with_db))
         .await
         .expect("Failed to create Postgres connection pool!")
 }
@@ -238,9 +240,9 @@ fn configure_redis(settings: &RedisSettings) -> redis::Connection {
 async fn delete_database(db_name: &str) {
     let configuration = get_configuration().expect("Failed to read configuration.");
 
-    let postgresql_conn_url = configuration.postgres.database_url.to_owned();
+    let postgresql_conn_url = configuration.postgres.database_url;
 
-    let connection_options = PgConnectOptions::from_str(&postgresql_conn_url)
+    let connection_options = PgConnectOptions::from_str(&postgresql_conn_url.expose_secret())
         .expect("Failed to parse PostgreSQL connection string");
 
     let mut connection = PgConnection::connect_with(&connection_options)

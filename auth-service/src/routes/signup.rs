@@ -1,6 +1,8 @@
 use crate::domain::{email::Email, password::Password};
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 
+use color_eyre::eyre::Result;
+use secrecy::Secret;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -12,8 +14,7 @@ use crate::{
 #[derive(Deserialize, Validate)]
 pub struct SignupRequest {
     pub email: String,
-    #[validate(length(min = 8))]
-    pub password: String,
+    pub password: Secret<String>,
     #[serde(rename = "requires2FA")]
     pub requires_2fa: bool,
 }
@@ -28,7 +29,8 @@ pub async fn signup(
     State(state): State<AppState>,
     Json(request): Json<SignupRequest>,
 ) -> Result<impl IntoResponse, AuthAPIError> {
-    let email = Email::parse(request.email).map_err(|_| AuthAPIError::InvalidCredentials)?;
+    let email =
+        Email::parse(Secret::new(request.email)).map_err(|_| AuthAPIError::InvalidCredentials)?;
     let password =
         Password::parse(request.password).map_err(|_| AuthAPIError::InvalidCredentials)?;
     let user = User::new(email, password, request.requires_2fa);

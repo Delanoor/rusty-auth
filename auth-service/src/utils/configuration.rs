@@ -1,21 +1,22 @@
-use config::{Config, File, FileFormat};
+use config::{Config, File};
 
-use dotenvy::{dotenv, from_filename};
+use secrecy::Secret;
 use serde::{Deserialize, Serialize};
 use std::env;
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Clone)]
 pub struct Settings {
     pub app_address: String,
     pub test_app_address: String,
-    pub jwt_secret: String,
+    pub jwt_secret: Secret<String>,
+    pub jwt_cookie_name: Secret<String>,
     pub postgres: PostgresSettings,
     pub redis: RedisSettings,
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Clone)]
 pub struct PostgresSettings {
-    pub database_url: String,
+    pub database_url: Secret<String>,
     pub password: String,
 }
 
@@ -28,7 +29,8 @@ pub struct RedisSettings {
 
 impl Settings {
     pub fn new() -> Result<Self, config::ConfigError> {
-        let app_env = env::var("APP_ENV").unwrap_or_else(|_| "local".into());
+        let app_env: String = env::var("APP_ENV").unwrap_or_else(|_| "local".into());
+
         let env_file = match app_env.as_str() {
             "production" => "config.production.yaml",
             _ => "config.local.yaml",
@@ -45,3 +47,5 @@ impl Settings {
 pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     Settings::new()
 }
+
+pub const JWT_COOKIE_NAME: &str = "jwt";

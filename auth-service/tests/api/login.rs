@@ -1,129 +1,134 @@
-// use auth_service::{
-//     domain::email::Email, routes::TwoFactorAuthResponse, utils::constants::JWT_COOKIE_NAME,
-// };
+use auth_service::{
+    domain::email::Email, routes::TwoFactorAuthResponse, utils::constants::JWT_COOKIE_NAME,
+};
 
-// use crate::helpers::{get_random_email, TestApp};
+use secrecy::{ExposeSecret, Secret};
 
-// #[tokio::test]
-// async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
-//     let mut app = TestApp::new().await;
+use crate::helpers::{get_random_email, TestApp};
 
-//     let random_email = get_random_email();
+#[tokio::test]
+async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
+    let mut app = TestApp::new().await;
 
-//     let signup_body = serde_json::json!({
-//         "email": random_email,
-//         "password": "pass1234",
-//         "requires2FA": false
-//     });
+    let random_email = get_random_email();
 
-//     let response = app.post_signup(&signup_body).await;
+    let signup_body = serde_json::json!({
+        "email": random_email,
+        "password": "pass1234",
+        "requires2FA": false
+    });
 
-//     assert_eq!(response.status().as_u16(), 201);
+    let response = app.post_signup(&signup_body).await;
 
-//     let login_body = serde_json::json!({
-//         "email": random_email,
-//         "password": "pass1234"
-//     });
+    assert_eq!(response.status().as_u16(), 201);
 
-//     let response = app.post_login(&login_body).await;
-//     assert_eq!(response.status().as_u16(), 200);
+    let login_body = serde_json::json!({
+        "email": random_email,
+        "password": "pass1234"
+    });
 
-//     let auth_cookie = response
-//         .cookies()
-//         .find(|cookie| cookie.name() == JWT_COOKIE_NAME)
-//         .expect("No auth cookie found");
+    let response = app.post_login(&login_body).await;
+    assert_eq!(response.status().as_u16(), 200);
 
-//     assert!(!auth_cookie.value().is_empty());
+    let auth_cookie = response
+        .cookies()
+        .find(|cookie| cookie.name() == JWT_COOKIE_NAME)
+        .expect("No auth cookie found");
 
-//     app.clean_up().await;
-// }
+    assert!(!auth_cookie.value().is_empty());
 
-// #[tokio::test]
-// async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
-//     let mut app = TestApp::new().await;
-//     let random_email = Email::parse(get_random_email()).unwrap();
+    app.clean_up().await;
+}
 
-//     let signup_body = serde_json::json!({
-//         "email": random_email.as_ref(),
-//         "password": "pass1234",
-//         "requires2FA": true
-//     });
+#[tokio::test]
+async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
+    let mut app = TestApp::new().await;
+    let random_email = Email::parse(Secret::new(get_random_email())).unwrap();
 
-//     let signup_response = app.post_signup(&signup_body).await;
-//     assert_eq!(signup_response.status().as_u16(), 201);
+    let signup_body = serde_json::json!({
+        "email": random_email.as_ref().expose_secret(),
+        "password": "pass1234",
+        "requires2FA": true
+    });
 
-//     let login_body = serde_json::json!({
-//         "email":random_email.as_ref(),
-//         "password": "pass1234",
+    let signup_response = app.post_signup(&signup_body).await;
+    assert_eq!(signup_response.status().as_u16(), 201);
 
-//     });
+    let login_body = serde_json::json!({
+        "email":random_email.as_ref().expose_secret(),
+        "password": "pass1234",
 
-//     let login_response = app.post_login(&login_body).await;
+    });
 
-//     assert_eq!(login_response.status().as_u16(), 206);
+    let login_response = app.post_login(&login_body).await;
 
-//     let json_body = login_response
-//         .json::<TwoFactorAuthResponse>()
-//         .await
-//         .expect("Could not deserialize response body to TwoFactorAuthResponse");
+    assert_eq!(login_response.status().as_u16(), 206);
 
-//     app.clean_up().await;
-//     let two_fa_code_store = app.two_fa_code_store.read().await;
+    let json_body = login_response
+        .json::<TwoFactorAuthResponse>()
+        .await
+        .expect("Could not deserialize response body to TwoFactorAuthResponse");
 
-//     let get_response = two_fa_code_store.get_code(&random_email).await;
-//     assert!(get_response.is_ok());
-//     assert_eq!(get_response.unwrap().0.as_ref(), json_body.login_attempt_id);
-// }
+    app.clean_up().await;
+    let two_fa_code_store = app.two_fa_code_store.read().await;
 
-// #[tokio::test]
-// async fn should_return_400_if_invalid() {
-//     let mut app = TestApp::new().await;
+    let get_response = two_fa_code_store.get_code(&random_email).await;
+    assert!(get_response.is_ok());
+    assert_eq!(
+        get_response.unwrap().0.as_ref().expose_secret().to_owned(),
+        json_body.login_attempt_id
+    );
+}
 
-//     let body = serde_json::json!({
-//         "email": get_random_email(),
-//         "password": "1234"
-//     });
+#[tokio::test]
+async fn should_return_400_if_invalid() {
+    let mut app = TestApp::new().await;
 
-//     let response = app.post_login(&body).await;
+    let body = serde_json::json!({
+        "email": get_random_email(),
+        "password": "1234"
+    });
 
-//     assert_eq!(response.status().as_u16(), 400);
+    let response = app.post_login(&body).await;
 
-//     app.clean_up().await;
-// }
+    assert_eq!(response.status().as_u16(), 400);
 
-// #[tokio::test]
-// async fn should_return_401_if_incorrect_credentials() {
-//     let mut app = TestApp::new().await;
-//     let body_signup = serde_json::json!({
-//         "email": "test@email.com",
-//         "password": "pwds1234",
-//         "requires2FA": false,
-//     });
+    app.clean_up().await;
+}
 
-//     let signup_response = app.post_signup(&body_signup).await;
-//     assert_eq!(signup_response.status().as_u16(), 201);
+#[tokio::test]
+async fn should_return_401_if_incorrect_credentials() {
+    let mut app = TestApp::new().await;
+    let body_signup = serde_json::json!({
+        "email": "test@email.com",
+        "password": "pwds1234",
+        "requires2FA": false,
+    });
 
-//     let body = serde_json::json!({
-//         "email": "test@email.com",
-//         "password": "12341234"
-//     });
-//     let response = app.post_login(&body).await;
-//     assert_eq!(response.status().as_u16(), 401);
+    let signup_response = app.post_signup(&body_signup).await;
+    assert_eq!(signup_response.status().as_u16(), 201);
 
-//     app.clean_up().await;
-// }
+    let body = serde_json::json!({
+        "email": "test@email.com",
+        "password": "12341234"
+    });
+    let response = app.post_login(&body).await;
+    assert_eq!(response.status().as_u16(), 401);
 
-// #[tokio::test]
-// async fn should_return_422_if_malformed_credentials() {
-//     let mut app = TestApp::new().await;
+    app.clean_up().await;
+}
 
-//     let body = serde_json::json!({
-//     "email": get_random_email()
-//     });
+#[tokio::test]
+async fn should_return_422_if_malformed_credentials() {
+    let mut app = TestApp::new().await;
 
-//     let response = app.post_login(&body).await;
+    let body = serde_json::json!({
+    "email": get_random_email()
+    });
 
-//     assert_eq!(response.status().as_u16(), 422);
+    let response = app.post_login(&body).await;
 
-//     app.clean_up().await
-// }
+    assert_eq!(response.status().as_u16(), 422);
+
+    app.clean_up().await
+}

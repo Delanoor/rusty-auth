@@ -9,11 +9,12 @@ use axum::{
 use domain::error::AuthAPIError;
 use redis::{Client, RedisResult};
 
+use secrecy::{ExposeSecret, Secret};
 use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::error::Error;
 use utils::{
-    constants::env::{BASE_PATH, DROPLET_IP},
+    constants::env::DROPLET_IP,
     tracing::{make_span_with_request_id, on_request, on_response},
 };
 
@@ -30,8 +31,7 @@ pub mod services;
 pub mod utils;
 
 pub mod routes;
-// use routes::{login, logout, signup, verify_2fa, verify_token};
-use routes::{signup, verify_token};
+use routes::{login, logout, signup, verify_2fa, verify_token};
 
 impl Application {
     pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> {
@@ -51,9 +51,9 @@ impl Application {
         let router = Router::new()
             .nest_service("/", ServeDir::new("assets"))
             .route("/signup", post(signup))
-            // .route("/login", post(login))
-            // .route("/logout", post(logout))
-            // .route("/verify-2fa", post(verify_2fa))
+            .route("/login", post(login))
+            .route("/logout", post(logout))
+            .route("/verify-2fa", post(verify_2fa))
             .route("/verify-token", post(verify_token))
             .with_state(app_state)
             .layer(cors)
@@ -121,8 +121,11 @@ fn log_error_chain(e: &(dyn Error + 'static)) {
     tracing::error!("{}", report);
 }
 
-pub async fn get_postgres_pool(url: &str) -> Result<PgPool, sqlx::Error> {
-    PgPoolOptions::new().max_connections(5).connect(url).await
+pub async fn get_postgres_pool(url: &Secret<String>) -> Result<PgPool, sqlx::Error> {
+    PgPoolOptions::new()
+        .max_connections(5)
+        .connect(url.expose_secret())
+        .await
 }
 
 pub fn get_redis_client(

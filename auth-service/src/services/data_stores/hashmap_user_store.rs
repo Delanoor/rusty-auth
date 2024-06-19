@@ -1,11 +1,11 @@
-use std::collections::HashMap;
-
 use crate::domain::{
     data_stores::{UserStore, UserStoreError},
     email::Email,
     password::Password,
     user::User,
 };
+use secrecy::Secret;
+use std::collections::HashMap;
 
 pub struct HashmapUserStore {
     users: HashMap<Email, User>,
@@ -18,10 +18,10 @@ impl Default for HashmapUserStore {
         };
 
         user_store.users.insert(
-            Email::parse("admin@email.com".to_string()).unwrap(),
+            Email::parse(Secret::new("admin@email.com".to_owned())).unwrap(),
             User {
-                email: Email::parse("admin@email.com".to_string()).unwrap(),
-                password: Password("12341234".to_string()),
+                email: Email::parse(Secret::new("admin@email.com".to_string())).unwrap(),
+                password: Password::parse(Secret::new("12341234".to_owned())).unwrap(),
                 requires_2fa: false,
             },
         );
@@ -68,14 +68,16 @@ impl UserStore for HashmapUserStore {
 
 #[cfg(test)]
 mod tests {
+    use secrecy::ExposeSecret;
+
     use super::*;
 
     #[tokio::test]
     async fn test_add_user() {
         let mut user_store = HashmapUserStore::default();
         let new_user = User {
-            email: Email::parse("test@email.com".to_string()).unwrap(),
-            password: Password::parse("12341234".to_string()).unwrap(),
+            email: Email::parse(Secret::new("test@email.com".to_string())).unwrap(),
+            password: Password::parse(Secret::new("12341234".to_string())).unwrap(),
             requires_2fa: false,
         };
         let result = user_store.add_user(new_user.clone()).await;
@@ -90,10 +92,13 @@ mod tests {
         let user_map = HashmapUserStore::default();
 
         let user_result = user_map
-            .get_user(&Email::parse("admin@email.com".to_string()).unwrap())
+            .get_user(&Email::parse(Secret::new("admin@email.com".to_string())).unwrap())
             .await
             .unwrap();
-        assert_eq!("admin@email.com", user_result.email.as_ref());
+        assert_eq!(
+            "admin@email.com",
+            user_result.email.as_ref().expose_secret()
+        );
     }
 
     #[tokio::test]
@@ -101,8 +106,8 @@ mod tests {
         let user_map = HashmapUserStore::default();
         assert!(user_map
             .validate_user(
-                &Email::parse("admin@email.com".to_string()).unwrap(),
-                &Password::parse("12341234".to_string()).unwrap()
+                &Email::parse(Secret::new("admin@email.com".to_string())).unwrap(),
+                &Password::parse(Secret::new("12341234".to_string())).unwrap()
             )
             .await
             .is_ok());
