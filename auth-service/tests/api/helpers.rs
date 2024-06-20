@@ -55,7 +55,7 @@ impl TestApp {
         let two_fa_code_store = Arc::new(RwLock::new(RedisTwoFACodeStore::new(Arc::new(
             RwLock::new(redis_two_fa_conig),
         ))));
-        let email_client = Arc::new(RwLock::new(MockEmailClient));
+        let email_client = Arc::new(MockEmailClient);
 
         let app_state = AppState::new(
             user_store,

@@ -9,7 +9,7 @@ use tokio::sync::RwLock;
 pub type UserStoreType = Arc<RwLock<dyn UserStore + Send + Sync>>;
 pub type TokenStoreType = Arc<RwLock<dyn BannedTokenStore + Send + Sync>>;
 pub type TwoFACodeStoreType = Arc<RwLock<dyn TwoFACodeStore + Send + Sync>>;
-pub type EmailClientType = Arc<RwLock<dyn EmailClient + Send + Sync>>;
+pub type EmailClientType = Arc<dyn EmailClient + Send + Sync>;
 pub type SettingsType = Settings;
 
 #[derive(Clone)]

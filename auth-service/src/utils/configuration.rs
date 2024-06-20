@@ -10,6 +10,7 @@ pub struct Settings {
     pub test_app_address: String,
     pub jwt_secret: Secret<String>,
     pub jwt_cookie_name: Secret<String>,
+    pub postmark_auth_token: Secret<String>,
     pub postgres: PostgresSettings,
     pub redis: RedisSettings,
 }
@@ -49,3 +50,22 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
 }
 
 pub const JWT_COOKIE_NAME: &str = "jwt";
+pub mod prod {
+
+    pub mod email_client {
+        use std::time::Duration;
+        pub const BASE_URL: &str = "https://api.postmarkapp.com/email";
+        // pub const SENDER: &str = "hwn@schoice.co";
+        pub const SENDER: &str = "bogdan@codeiron.io";
+        pub const TIMEOUT: Duration = std::time::Duration::from_secs(10);
+    }
+}
+
+pub mod test {
+
+    pub mod email_client {
+        use std::time::Duration;
+        pub const SENDER: &str = "test@email.com";
+        pub const TIMEOUT: Duration = std::time::Duration::from_millis(200);
+    }
+}
