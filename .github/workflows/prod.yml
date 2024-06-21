@@ -11,6 +11,7 @@ permissions:
 
 env:
   AWS_REGION: us-east-1 # Specify your AWS region
+  APP_ENV: production
 
 jobs:
   build:
@@ -30,8 +31,7 @@ jobs:
       - name: Fetch secrets from AWS Secrets Manager
         id: fetch-secrets
         run: |
-          APP_ENV=${{ env.APP_ENV }}
-          SECRET_NAME="rusty-auth/${APP_ENV}"
+          SECRET_NAME="rusty-auth/production"
           SECRETS=$(aws secretsmanager get-secret-value --secret-id $SECRET_NAME --query SecretString --output text)
           echo "$SECRETS" > secrets.json
           jq -r 'to_entries[] | "\(.key)=\(.value)"' secrets.json > .env
@@ -46,6 +46,7 @@ jobs:
           app_address: "$app_address"
           test_app_address: "$test_app_address"
           jwt_secret: "$jwt_secret"
+          postmark_auth_token: "$postmark_auth_token"
           postgres:
             database_url: "$postgres_database_url"
             password: "$postgres_password"
@@ -118,6 +119,7 @@ jobs:
             --build-arg REDIS_HOST_NAME=${{ secrets.REDIS_HOST_NAME }} \
             --build-arg REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }} \
             --build-arg REDIS_PORT=${{ secrets.REDIS_PORT }} \
+            --build-arg POSTMARK_AUTH_TOKEN=${{ secrets.POSTMARK_AUTH_TOKEN }} \
             -t ${{ env.DOCKER_HUB_USERNAME }}/auth-service:auth-service-${{ env.IMAGE_TAG }} \
             -t ${{ env.DOCKER_HUB_USERNAME }}/auth-service:auth-service-latest .
           docker push ${{ env.DOCKER_HUB_USERNAME }}/auth-service:auth-service-${{ env.IMAGE_TAG }}
