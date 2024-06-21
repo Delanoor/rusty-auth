@@ -12,6 +12,7 @@ pub struct Settings {
     pub jwt_cookie_name: Secret<String>,
     pub postmark_auth_token: Secret<String>,
     pub postgres: PostgresSettings,
+    pub region: Option<String>,
     pub redis: RedisSettings,
 }
 

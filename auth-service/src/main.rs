@@ -3,7 +3,7 @@ use std::sync::Arc;
 use auth_service::app_state::AppState;
 
 use auth_service::domain::Email;
-use auth_service::services::data_stores::mock_email_client::MockEmailClient;
+use auth_service::services::aws_email_client::AWSEmailClient;
 use auth_service::services::data_stores::postgres_user_store::PostgresUserStore;
 use auth_service::services::data_stores::redis_banned_token_store::RedisBannedTokenStore;
 use auth_service::services::data_stores::redis_two_fa_code_store::RedisTwoFACodeStore;
@@ -15,6 +15,10 @@ use auth_service::utils::configuration::{
 
 use auth_service::utils::tracing::init_tracing;
 use auth_service::{get_postgres_pool, get_redis_client, Application};
+
+use aws_config::meta::region::RegionProviderChain;
+use aws_config::Region;
+use aws_sdk_sesv2::Client as AWSClient;
 use reqwest::Client;
 use secrecy::Secret;
 use sqlx::PgPool;
@@ -42,7 +46,9 @@ async fn main() {
     let two_fa_code_store = Arc::new(RwLock::new(RedisTwoFACodeStore::new(Arc::new(
         RwLock::new(redis_code_config),
     ))));
-    let email_client = Arc::new(configure_postmark_email_client());
+
+    // let email_client = Arc::new(configure_postmark_email_client());
+    let email_client = Arc::new(configure_aws_ses_client().await);
 
     let app_state: AppState = AppState::new(
         user_store,
@@ -102,4 +108,16 @@ fn configure_postmark_email_client() -> PostmarkEmailClient {
         configuration.postmark_auth_token.to_owned(),
         http_client,
     )
+}
+
+async fn configure_aws_ses_client() -> AWSEmailClient {
+    // let config = aws_config::load_from_env().await;
+    let configuration: auth_service::utils::configuration::Settings =
+        get_configuration().expect("Failed to get configurations.");
+    let region_provider = RegionProviderChain::first_try(configuration.region.map(Region::new))
+        .or_default_provider()
+        .or_else(Region::new("us-west-1"));
+    let shared_config = aws_config::from_env().region(region_provider).load().await;
+    let client = AWSClient::new(&shared_config);
+    AWSEmailClient::new(client)
 }

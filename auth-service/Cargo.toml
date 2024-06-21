@@ -34,6 +34,8 @@ thiserror = "1.0.61"
 color-eyre = "0.6.3"
 secrecy = { version = "0.8.0", features = ["serde"] }
 reqwest = { version = "0.12.4",default-features = false, features = ["json",  "cookies", "rustls-tls"] }
+aws-sdk-sesv2 = "1.36.0"
+aws-config = { version = "1.5.3", features = ["behavior-version-latest"] }
 
 [dev-dependencies]
 fake = "2.9.2"

@@ -31,9 +31,11 @@ COPY --from=builder /app/target/release/auth-service /usr/local/bin
 COPY --from=builder /app/assets /app/assets
 
 COPY config.production.yaml /app/config.production.yaml
+COPY config.yaml /app/config.yaml
 
 
 # Set environment variables for runtime
+ENV APP_ENV=production
 ENV REDIS_HOST_NAME=redis
 ENV JWT_SECRET=${JWT_SECRET}
 ENV DATABASE_URL=${DATABASE_URL}
