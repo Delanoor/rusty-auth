@@ -28,6 +28,9 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: "us-west-1"
 
+      - name: Ensure config directory exists
+        run: mkdir -p src/config
+
       - name: Write config.toml
         run: echo "${{ secrets.CONFIG_TOML }}" > src/config/production.toml
 
