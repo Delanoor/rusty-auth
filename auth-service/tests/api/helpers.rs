@@ -157,10 +157,12 @@ impl TestApp {
     }
 
     pub async fn clean_up(&mut self) {
-        // if self.clean_up_called {
-        //     return;
-        // }
-        delete_database(&self.db_name).await;
+        if self.clean_up_called {
+            return;
+        }
+        if let Err(e) = delete_database(&self.db_name).await {
+            eprintln!("Failed to drop the database.: {:?}", e);
+        }
 
         self.clean_up_called = true;
     }
@@ -229,10 +231,10 @@ fn configure_redis(settings: &TestSettings) -> redis::Connection {
     client
         .expect("Failed to create Redis client")
         .get_connection()
-        .expect("Failed to")
+        .expect("Failed to get Redis connection")
 }
 
-async fn delete_database(db_name: &str) {
+async fn delete_database(db_name: &str) -> Result<(), sqlx::Error> {
     let configuration = get_configuration().expect("Failed to read configuration.");
 
     let postgresql_conn_url = configuration.postgres.database_url;
@@ -258,12 +260,12 @@ async fn delete_database(db_name: &str) {
             )
             .as_str(),
         )
-        .await
-        .expect("Failed to drop the database.");
+        .await?;
 
     // Drop the db
     connection
         .execute(format!(r#"DROP DATABASE "{}";"#, db_name).as_str())
-        .await
-        .expect("Failed to drop the database.");
+        .await?;
+
+    Ok(())
 }
