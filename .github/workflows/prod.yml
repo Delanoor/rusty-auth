@@ -35,7 +35,7 @@ jobs:
       - name: Write config.toml
         run: echo "${{ secrets.CONFIG_TOML }}" > src/config/production.toml
 
-      - name: Debug: List files in config directory
+      - name: List files in config directory
         run: ls -la src/config
 
       - name: Set environment variables
