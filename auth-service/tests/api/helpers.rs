@@ -6,7 +6,7 @@ use auth_service::{
         redis_banned_token_store::RedisBannedTokenStore,
         redis_two_fa_code_store::RedisTwoFACodeStore,
     },
-    utils::configuration::{get_configuration, PostgresSettings, RedisSettings},
+    utils::configuration::{get_configuration, TestSettings},
     Application,
 };
 use reqwest::cookie::Jar;
@@ -34,9 +34,8 @@ pub struct TestApp {
 impl TestApp {
     pub async fn new() -> Self {
         let configuration = get_configuration().expect("Failed to read configuration.");
-        let postgres_settings = &configuration.postgres;
-        let redis_settings = &configuration.redis;
-        let pg_pool = configure_postgresql(postgres_settings).await;
+
+        let pg_pool = configure_postgresql(&configuration.test).await;
 
         let db_name = match pg_pool.connect_options().get_database() {
             Some(name) => name.to_owned(),
@@ -45,8 +44,8 @@ impl TestApp {
             }
         };
 
-        let redis_config = configure_redis(redis_settings);
-        let redis_two_fa_conig = configure_redis(redis_settings);
+        let redis_config = configure_redis(&configuration.test);
+        let redis_two_fa_conig = configure_redis(&configuration.test);
 
         let user_store = Arc::new(RwLock::new(PostgresUserStore::new(pg_pool)));
         let token_store = Arc::new(RwLock::new(RedisBannedTokenStore::new(Arc::new(
@@ -179,7 +178,7 @@ pub fn get_random_email() -> String {
     format!("{}@example.com", Uuid::new_v4())
 }
 
-async fn configure_postgresql(settings: &PostgresSettings) -> PgPool {
+async fn configure_postgresql(settings: &TestSettings) -> PgPool {
     let postgresql_conn_url = settings.test_database_url.to_owned();
 
     let db_name = Uuid::new_v4().to_string();
@@ -221,15 +220,11 @@ async fn configure_database(db_conn_string: &str, db_name: &str) {
         .expect("Failed to migrate the database.");
 }
 
-fn configure_redis(settings: &RedisSettings) -> redis::Connection {
-    let client = if settings.password.is_empty() {
-        redis::Client::open(format!("redis://{}:{}/", settings.host_name, settings.port))
-    } else {
-        redis::Client::open(format!(
-            "redis://:{}@{}:{}/",
-            settings.password, settings.host_name, settings.port
-        ))
-    };
+fn configure_redis(settings: &TestSettings) -> redis::Connection {
+    let client = redis::Client::open(format!(
+        "redis://{}:{}/",
+        settings.test_redis_host_name, settings.test_redis_port
+    ));
 
     client
         .expect("Failed to create Redis client")

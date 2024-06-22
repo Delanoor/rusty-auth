@@ -12,3 +12,10 @@ password = "yourpassword"
 host_name = ""
 password = ""
 port = "6379"
+
+[test]
+test_database_url = "postgres://postgres:pass1234@localhost:5432"
+test_database_password = "pass1234"
+test_redis_host_name = "localhost"
+test_redis_password = ""
+test_redis_port = "6379"

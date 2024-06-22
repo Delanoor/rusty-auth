@@ -2,7 +2,7 @@ use config::{Config, File};
 
 use lazy_static::lazy_static;
 use secrecy::Secret;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::env;
 
 #[derive(Deserialize, Clone)]
@@ -14,21 +14,29 @@ pub struct Settings {
     pub postgres: PostgresSettings,
     pub region: Option<String>,
     pub redis: RedisSettings,
+    pub test: TestSettings,
 }
 
 #[derive(Deserialize, Clone)]
 pub struct PostgresSettings {
     pub database_url: Secret<String>,
-    pub test_database_url: Secret<String>,
     pub password: String,
-    pub test_password: Secret<String>,
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Clone)]
 pub struct RedisSettings {
     pub host_name: String,
     pub password: String,
     pub port: String,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct TestSettings {
+    pub test_database_url: Secret<String>,
+    pub test_database_password: Secret<String>,
+    pub test_redis_host_name: String,
+    pub test_redis_password: Secret<String>,
+    pub test_redis_port: String,
 }
 
 impl Settings {
