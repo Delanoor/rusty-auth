@@ -30,7 +30,7 @@ jobs:
           aws-region: "us-west-1"
 
       - name: Write config.toml
-        run: echo "${{ secrets.CONFIG_TOML }}" > auth-service/src/config/production.toml
+        run: echo "${{ secrets.CONFIG_TOML_BASE64 }}" | base64 --decode > auth-service/src/config/production.toml
 
       - name: Set environment variables
         run: |
