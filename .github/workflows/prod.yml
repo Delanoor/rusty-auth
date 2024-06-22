@@ -56,12 +56,17 @@ jobs:
           profile: minimal
           toolchain: stable
 
+      - name: List config directory contents
+        run: ls -la auth-service/src/config
+
+      - name: Print contents of production.toml
+        run: cat auth-service/src/config/production.toml
+
       - name: Build and test auth-service code
         working-directory: ./auth-service
         run: |
           export JWT_SECRET=secret
           export DATABASE_URL=postgres://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432
-          cat src/config/production.toml
           cargo build --verbose
           cargo test --verbose
 
