@@ -1,0 +1,14 @@
+app_address = "0.0.0.0:8000"
+test_app_address = "127.0.0.1:0"
+jwt_secret = ""
+jwt_cookie_name = "jwt_cookie_name"
+region = "us-west-1"
+
+[postgres]
+database_url = "postgres://postgres:yourpassword@localhost:5432/postgres"
+password = "yourpassword"
+
+[redis]
+host_name = ""
+password = ""
+port = "6379"
