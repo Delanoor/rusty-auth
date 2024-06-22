@@ -12,6 +12,7 @@ permissions:
 env:
   AWS_REGION: us-east-1
   APP_ENV: production
+  SQLX_OFFLINE: true
 
 jobs:
   build:
@@ -62,7 +63,7 @@ jobs:
         working-directory: ./auth-service
         run: |
           cargo build --verbose
-          cargo test -- --nocapture -- --test-threads=1
+          cargo test --verbose
 
       - name: Install dependencies for app-service
         working-directory: ./app-service
