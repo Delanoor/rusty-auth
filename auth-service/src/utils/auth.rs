@@ -53,7 +53,7 @@ fn generate_auth_token(email: &Email) -> Result<String> {
         "failed to cast exp time to usize. exp time: {}",
         exp
     ))?;
-    let sub = email.as_ref().expose_secret().to_owned();
+    let sub: String = email.as_ref().expose_secret().to_owned();
 
     let claims = Claims { sub, exp };
 

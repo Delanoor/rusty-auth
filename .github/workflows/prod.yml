@@ -29,14 +29,9 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: "us-west-1"
 
-      - name: Ensure config directory exists
-        run: mkdir -p src/config
-
       - name: Write config.toml
+        working-directory: ./auth-service
         run: echo "${{ secrets.CONFIG_TOML }}" > src/config/production.toml
-
-      - name: List files in config directory
-        run: ls -la src/config
 
       - name: Set environment variables
         run: |
@@ -65,8 +60,10 @@ jobs:
       - name: Build and test auth-service code
         working-directory: ./auth-service
         run: |
+          export JWT_SECRET=secret
+          export DATABASE_URL=postgres://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432
           cargo build --verbose
-          cargo test --verbose -- --test-threads=1
+          cargo test --verbose
 
       - name: Install dependencies for app-service
         working-directory: ./app-service
