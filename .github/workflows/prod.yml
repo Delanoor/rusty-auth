@@ -100,7 +100,8 @@ jobs:
         id: build-auth-service-image
         run: |
           cd auth-service
-          docker build \
+          docker buildx create --use
+          docker buildx build \
             --build-arg DATABASE_URL=${{ secrets.DATABASE_URL }} \
             --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }} \
             --build-arg SQLX_OFFLINE=${{ env.SQLX_OFFLINE }} \
