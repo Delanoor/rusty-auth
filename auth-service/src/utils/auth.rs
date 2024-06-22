@@ -138,27 +138,27 @@ pub struct Claims {
 //         assert_eq!(result.split('.').count(), 3);
 //     }
 
-    // #[tokio::test]
-    // async fn test_validate_token_with_valid_token() {
-    //     let email = Email::parse("test@example.com".to_owned()).unwrap();
-    //     let token = generate_auth_token(&email).unwrap();
+// #[tokio::test]
+// async fn test_validate_token_with_valid_token() {
+//     let email = Email::parse("test@example.com".to_owned()).unwrap();
+//     let token = generate_auth_token(&email).unwrap();
 
-    //     let token_store = AppState::new(user_store, token_store);
-    //     let result = validate_token(&token).await.unwrap();
-    //     assert_eq!(result.sub, "test@example.com");
+//     let token_store = AppState::new(user_store, token_store);
+//     let result = validate_token(&token).await.unwrap();
+//     assert_eq!(result.sub, "test@example.com");
 
-    //     let exp = Utc::now()
-    //         .checked_add_signed(chrono::Duration::try_minutes(9).expect("valid duration"))
-    //         .expect("valid timestamp")
-    //         .timestamp();
+//     let exp = Utc::now()
+//         .checked_add_signed(chrono::Duration::try_minutes(9).expect("valid duration"))
+//         .expect("valid timestamp")
+//         .timestamp();
 
-    //     assert!(result.exp > exp as usize);
-    // }
+//     assert!(result.exp > exp as usize);
+// }
 
-    // #[tokio::test]
-    // async fn test_validate_token_with_invalid_token() {
-    //     let token = "invalid_token".to_owned();
-    //     let result = validate_token(&token).await;
-    //     assert!(result.is_err());
-    // }
-}
+// #[tokio::test]
+// async fn test_validate_token_with_invalid_token() {
+//     let token = "invalid_token".to_owned();
+//     let result = validate_token(&token).await;
+//     assert!(result.is_err());
+// }
+// }
