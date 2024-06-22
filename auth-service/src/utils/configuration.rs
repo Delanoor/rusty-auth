@@ -19,7 +19,9 @@ pub struct Settings {
 #[derive(Deserialize, Clone)]
 pub struct PostgresSettings {
     pub database_url: Secret<String>,
+    pub test_database_url: Secret<String>,
     pub password: String,
+    pub test_password: Secret<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone)]

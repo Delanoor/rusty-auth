@@ -180,7 +180,7 @@ pub fn get_random_email() -> String {
 }
 
 async fn configure_postgresql(settings: &PostgresSettings) -> PgPool {
-    let postgresql_conn_url = settings.database_url.to_owned();
+    let postgresql_conn_url = settings.test_database_url.to_owned();
 
     let db_name = Uuid::new_v4().to_string();
 
