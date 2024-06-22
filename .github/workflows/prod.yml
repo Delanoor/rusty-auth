@@ -63,7 +63,7 @@ jobs:
         working-directory: ./auth-service
         run: |
           cargo build --verbose
-          cargo test --verbose
+          cargo test --verbose -- --test-threads=1
 
       - name: Install dependencies for app-service
         working-directory: ./app-service
