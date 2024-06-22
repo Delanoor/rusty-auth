@@ -100,19 +100,19 @@ jobs:
         id: build-auth-service-image
         run: |
           cd auth-service
-          docker buildx create --use
-          docker buildx build \
-            --build-arg DATABASE_URL=${{ secrets.DATABASE_URL }} \
-            --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }} \
-            --build-arg SQLX_OFFLINE=${{ env.SQLX_OFFLINE }} \
-            --build-arg POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
-            --build-arg REDIS_HOST_NAME=${{ secrets.REDIS_HOST_NAME }} \
-            --build-arg REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }} \
-            --build-arg REDIS_PORT=${{ secrets.REDIS_PORT }} \
-            -t ${{ secrets.DOCKER_USERNAME }}/rusty-auth:${{ github.sha }} \
-            -t ${{ secrets.DOCKER_USERNAME }}/rusty-auth:latest .
-          docker push ${{ secrets.DOCKER_USERNAME }}/rusty-auth:${{ github.sha }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/rusty-auth:latest
+           docker buildx create --use
+           docker buildx build \
+             --platform linux/amd64,linux/arm64 \
+             --build-arg DATABASE_URL=${{ secrets.DATABASE_URL }} \
+             --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }} \
+             --build-arg SQLX_OFFLINE=${{ env.SQLX_OFFLINE }} \
+             --build-arg POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+             --build-arg REDIS_HOST_NAME=${{ secrets.REDIS_HOST_NAME }} \
+             --build-arg REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }} \
+             --build-arg REDIS_PORT=${{ secrets.REDIS_PORT }} \
+             -t ${{ secrets.DOCKER_USERNAME }}/rusty-auth:${{ github.sha }} \
+             -t ${{ secrets.DOCKER_USERNAME }}/rusty-auth:latest \
+             --push .
 
   deploy:
     needs: build
