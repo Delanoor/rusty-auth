@@ -61,6 +61,7 @@ jobs:
         run: |
           export JWT_SECRET=secret
           export DATABASE_URL=postgres://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432
+          echo src/config/production.toml
           cargo build --verbose
           cargo test --verbose
 
