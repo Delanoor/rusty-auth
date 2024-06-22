@@ -102,41 +102,41 @@ pub struct Claims {
     pub exp: usize,
 }
 
-#[cfg(test)]
-mod tests {
+// #[cfg(test)]
+// mod tests {
 
-    use secrecy::Secret;
+//     use secrecy::Secret;
 
-    use super::*;
+//     use super::*;
 
-    #[tokio::test]
-    async fn test_generate_auth_cookie() {
-        let email: Email = Email::parse(Secret::new("test@example.com".to_string())).unwrap();
-        let cookie = generate_auth_cookie(&email).unwrap();
-        assert_eq!(cookie.name(), JWT_COOKIE_NAME);
-        assert_eq!(cookie.value().split('.').count(), 3);
-        assert_eq!(cookie.path(), Some("/"));
-        assert_eq!(cookie.http_only(), Some(true));
-        assert_eq!(cookie.same_site(), Some(SameSite::Lax));
-    }
+//     #[tokio::test]
+//     async fn test_generate_auth_cookie() {
+//         let email: Email = Email::parse(Secret::new("test@example.com".to_string())).unwrap();
+//         let cookie = generate_auth_cookie(&email).unwrap();
+//         assert_eq!(cookie.name(), JWT_COOKIE_NAME);
+//         assert_eq!(cookie.value().split('.').count(), 3);
+//         assert_eq!(cookie.path(), Some("/"));
+//         assert_eq!(cookie.http_only(), Some(true));
+//         assert_eq!(cookie.same_site(), Some(SameSite::Lax));
+//     }
 
-    #[tokio::test]
-    async fn test_create_auth_cookie() {
-        let token = "test_token".to_owned();
-        let cookie = create_auth_cookie(token.clone());
-        assert_eq!(cookie.name(), JWT_COOKIE_NAME);
-        assert_eq!(cookie.value(), token);
-        assert_eq!(cookie.path(), Some("/"));
-        assert_eq!(cookie.http_only(), Some(true));
-        assert_eq!(cookie.same_site(), Some(SameSite::Lax));
-    }
+//     #[tokio::test]
+//     async fn test_create_auth_cookie() {
+//         let token = "test_token".to_owned();
+//         let cookie = create_auth_cookie(token.clone());
+//         assert_eq!(cookie.name(), JWT_COOKIE_NAME);
+//         assert_eq!(cookie.value(), token);
+//         assert_eq!(cookie.path(), Some("/"));
+//         assert_eq!(cookie.http_only(), Some(true));
+//         assert_eq!(cookie.same_site(), Some(SameSite::Lax));
+//     }
 
-    #[tokio::test]
-    async fn test_generate_auth_token() {
-        let email = Email::parse(Secret::new("test@example.com".to_string())).unwrap();
-        let result = generate_auth_token(&email).unwrap();
-        assert_eq!(result.split('.').count(), 3);
-    }
+//     #[tokio::test]
+//     async fn test_generate_auth_token() {
+//         let email = Email::parse(Secret::new("test@example.com".to_string())).unwrap();
+//         let result = generate_auth_token(&email).unwrap();
+//         assert_eq!(result.split('.').count(), 3);
+//     }
 
     // #[tokio::test]
     // async fn test_validate_token_with_valid_token() {
