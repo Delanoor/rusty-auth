@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: us-east-1 # Specify your AWS region
+  AWS_REGION: us-east-1
   APP_ENV: production
 
 jobs:
@@ -28,33 +28,17 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: "us-west-1"
 
-      - name: Fetch secrets from AWS Secrets Manager
-        id: fetch-secrets
-        run: |
-          SECRET_NAME="rusty-auth/production"
-          SECRETS=$(aws secretsmanager get-secret-value --secret-id $SECRET_NAME --query SecretString --output text)
-          echo "$SECRETS" > secrets.json
-          jq -r 'to_entries[] | "\(.key)=\(.value)"' secrets.json > .env
+      - name: Write config.toml
+        run: echo "${{ secrets.CONFIG_TOML }}" > src/config/production.toml
 
-      - name: Load secrets into environment
+      - name: Set environment variables
         run: |
-          export $(grep -v '^#' .env | xargs)
-
-      - name: Create config.yaml file
-        run: |
-          cat <<EOT > config.yaml
-          app_address: "$app_address"
-          test_app_address: "$test_app_address"
-          jwt_secret: "$jwt_secret"
-          postmark_auth_token: "$postmark_auth_token"
-          postgres:
-            database_url: "$postgres_database_url"
-            password: "$postgres_password"
-          redis:
-            host_name: "$redis_host_name"
-            password: "$redis_password"
-            port: "$redis_port"
-          EOT
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> $GITHUB_ENV
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> $GITHUB_ENV
+          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> $GITHUB_ENV
+          echo "REDIS_HOST_NAME=${{ secrets.REDIS_HOST_NAME }}" >> $GITHUB_ENV
+          echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >> $GITHUB_ENV
+          echo "REDIS_PORT=${{ secrets.REDIS_PORT }}" >> $GITHUB_ENV
 
       - name: Cache dependencies for auth-service
         uses: actions/cache@v3
@@ -75,7 +59,7 @@ jobs:
         working-directory: ./auth-service
         run: |
           cargo build --verbose
-          cargo test --verbose
+          cargo test -- --nocapture -- --test-threads=1
 
       - name: Install dependencies for app-service
         working-directory: ./app-service
