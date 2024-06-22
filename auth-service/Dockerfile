@@ -30,8 +30,7 @@ WORKDIR /app
 COPY --from=builder /app/target/release/auth-service /usr/local/bin
 COPY --from=builder /app/assets /app/assets
 
-COPY config.production.yaml /app/config.production.yaml
-COPY config.yaml /app/config.yaml
+
 
 
 # Set environment variables for runtime

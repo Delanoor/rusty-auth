@@ -1,5 +1,6 @@
 use config::{Config, File};
 
+use lazy_static::lazy_static;
 use secrecy::Secret;
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -10,7 +11,6 @@ pub struct Settings {
     pub test_app_address: String,
     pub jwt_secret: Secret<String>,
     pub jwt_cookie_name: Secret<String>,
-    pub postmark_auth_token: Secret<String>,
     pub postgres: PostgresSettings,
     pub region: Option<String>,
     pub redis: RedisSettings,
@@ -34,8 +34,8 @@ impl Settings {
         let app_env: String = env::var("APP_ENV").unwrap_or_else(|_| "local".into());
 
         let env_file = match app_env.as_str() {
-            "production" => "config.production.yaml",
-            _ => "config.local.yaml",
+            "production" => "src/config/production.toml",
+            _ => "src/config/development.toml",
         };
 
         let config = Config::builder()
@@ -51,22 +51,11 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
 }
 
 pub const JWT_COOKIE_NAME: &str = "jwt";
-pub mod prod {
 
-    pub mod email_client {
-        use std::time::Duration;
-        pub const BASE_URL: &str = "https://api.postmarkapp.com/email";
-        // pub const SENDER: &str = "hwn@schoice.co";
-        pub const SENDER: &str = "bogdan@codeiron.io";
-        pub const TIMEOUT: Duration = std::time::Duration::from_secs(10);
-    }
+lazy_static! {
+    pub static ref CONFIG: Settings = get_configuration().expect("Failed to load configuration");
 }
 
-pub mod test {
-
-    pub mod email_client {
-        use std::time::Duration;
-        pub const SENDER: &str = "test@email.com";
-        pub const TIMEOUT: Duration = std::time::Duration::from_millis(200);
-    }
+pub fn get_jwt_seret() -> Secret<String> {
+    CONFIG.jwt_secret.clone()
 }

@@ -2,15 +2,13 @@ use std::sync::Arc;
 
 use auth_service::app_state::AppState;
 
-use auth_service::domain::Email;
 use auth_service::services::aws_email_client::AWSEmailClient;
 use auth_service::services::data_stores::postgres_user_store::PostgresUserStore;
 use auth_service::services::data_stores::redis_banned_token_store::RedisBannedTokenStore;
 use auth_service::services::data_stores::redis_two_fa_code_store::RedisTwoFACodeStore;
 
-use auth_service::services::postmark_email_client::PostmarkEmailClient;
 use auth_service::utils::configuration::{
-    get_configuration, prod, PostgresSettings, RedisSettings,
+    get_configuration, PostgresSettings, RedisSettings, CONFIG,
 };
 
 use auth_service::utils::tracing::init_tracing;
@@ -19,8 +17,7 @@ use auth_service::{get_postgres_pool, get_redis_client, Application};
 use aws_config::meta::region::RegionProviderChain;
 use aws_config::Region;
 use aws_sdk_sesv2::Client as AWSClient;
-use reqwest::Client;
-use secrecy::Secret;
+
 use sqlx::PgPool;
 use tokio::sync::RwLock;
 
@@ -29,7 +26,7 @@ async fn main() {
     color_eyre::install().expect("Failed to install color_eyre");
     init_tracing().expect("Failed to initialize tracing");
 
-    let configuration = get_configuration().expect("Failed to get configurations");
+    let configuration = &*CONFIG;
 
     let postgres_settings = &configuration.postgres;
     let redis_settings = &configuration.redis;
@@ -48,7 +45,7 @@ async fn main() {
     ))));
 
     // let email_client = Arc::new(configure_postmark_email_client());
-    let email_client = Arc::new(configure_aws_ses_client().await);
+    let email_client = Arc::new(configure_aws_ses_client(&configuration.region).await);
 
     let app_state: AppState = AppState::new(
         user_store,
@@ -94,27 +91,24 @@ fn configure_redis(settings: &RedisSettings) -> redis::Connection {
     .expect("Failed to get Redis connection")
 }
 
-fn configure_postmark_email_client() -> PostmarkEmailClient {
-    let configuration = get_configuration().expect("Failed to get configurations.");
+// fn configure_postmark_email_client() -> PostmarkEmailClient {
+//     let configuration = get_configuration().expect("Failed to get configurations.");
 
-    let http_client = Client::builder()
-        .timeout(prod::email_client::TIMEOUT)
-        .build()
-        .expect("Failed to build HTTP client");
+//     let http_client = Client::builder()
+//         .timeout(prod::email_client::TIMEOUT)
+//         .build()
+//         .expect("Failed to build HTTP client");
 
-    PostmarkEmailClient::new(
-        prod::email_client::BASE_URL.to_owned(),
-        Email::parse(Secret::new(prod::email_client::SENDER.to_owned())).unwrap(),
-        configuration.postmark_auth_token.to_owned(),
-        http_client,
-    )
-}
+//     PostmarkEmailClient::new(
+//         prod::email_client::BASE_URL.to_owned(),
+//         Email::parse(Secret::new(prod::email_client::SENDER.to_owned())).unwrap(),
+//         configuration.postmark_auth_token.to_owned(),
+//         http_client,
+//     )
+// }
 
-async fn configure_aws_ses_client() -> AWSEmailClient {
-    // let config = aws_config::load_from_env().await;
-    let configuration: auth_service::utils::configuration::Settings =
-        get_configuration().expect("Failed to get configurations.");
-    let region_provider = RegionProviderChain::first_try(configuration.region.map(Region::new))
+async fn configure_aws_ses_client(region: &Option<String>) -> AWSEmailClient {
+    let region_provider = RegionProviderChain::first_try(region.to_owned().map(Region::new))
         .or_default_provider()
         .or_else(Region::new("us-west-1"));
     let shared_config = aws_config::from_env().region(region_provider).load().await;

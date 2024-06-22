@@ -78,9 +78,10 @@ struct SendEmailRequest<'a> {
 #[cfg(test)]
 mod tests {
 
-    use crate::utils::configuration::test;
+    use std::time::Duration;
 
     use super::*;
+
     use fake::faker::internet::en::SafeEmail;
     use fake::faker::lorem::en::{Paragraph, Sentence};
     use fake::{Fake, Faker};
@@ -103,7 +104,7 @@ mod tests {
 
     fn email_client(base_url: String) -> PostmarkEmailClient {
         let http_client = Client::builder()
-            .timeout(test::email_client::TIMEOUT)
+            .timeout(Duration::from_millis(200))
             .build()
             .unwrap();
 

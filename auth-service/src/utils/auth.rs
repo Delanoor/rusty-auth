@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{app_state::TokenStoreType, domain::email::Email};
 use color_eyre::eyre::{eyre, Context, ContextCompat, Result};
 
-use super::configuration::{get_configuration, JWT_COOKIE_NAME};
+use super::configuration::{get_jwt_seret, JWT_COOKIE_NAME};
 
 // Create cookie with a new JWT auth token
 #[tracing::instrument(name = "Generating auth cookie", skip_all)]
@@ -63,7 +63,7 @@ fn generate_auth_token(email: &Email) -> Result<String> {
 // Check if JWT auth token is valid by decoding it using the JWT secret
 #[tracing::instrument(name = "Validating JWT auth token", skip_all)]
 pub async fn validate_token(token_store: TokenStoreType, token: Secret<String>) -> Result<Claims> {
-    let configuration = get_configuration().expect("Failed to get configuration.");
+    let jwt_secret = get_jwt_seret();
     let banned_token_store = token_store.read().await;
 
     match banned_token_store.contains_token(token.to_owned()).await {
@@ -77,7 +77,7 @@ pub async fn validate_token(token_store: TokenStoreType, token: Secret<String>) 
 
     decode(
         token.expose_secret(),
-        &DecodingKey::from_secret(configuration.jwt_secret.expose_secret().as_bytes()),
+        &DecodingKey::from_secret(jwt_secret.expose_secret().as_bytes()),
         &Validation::default(),
     )
     .map(|data| data.claims)
@@ -87,11 +87,11 @@ pub async fn validate_token(token_store: TokenStoreType, token: Secret<String>) 
 // Create JWT auth token by encoding claims using the JWT secret
 #[tracing::instrument(name = "Creating JWT auth token", skip_all)]
 fn create_token(claims: &Claims) -> Result<String> {
-    let configuration = get_configuration().expect("Failed to get configuration.");
+    let jwt_secret = get_jwt_seret();
     encode(
         &jsonwebtoken::Header::default(),
         &claims,
-        &EncodingKey::from_secret(configuration.jwt_secret.expose_secret().as_bytes()),
+        &EncodingKey::from_secret(jwt_secret.expose_secret().as_bytes()),
     )
     .wrap_err("failed to create token")
 }
