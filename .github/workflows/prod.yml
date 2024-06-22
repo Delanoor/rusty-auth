@@ -138,8 +138,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: |
-            auth-service/compose.yml
+          source: compose.yml
           target: "~/"
 
       - name: Deploy
