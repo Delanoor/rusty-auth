@@ -95,25 +95,41 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build and push Docker images
+        uses: docker/bake-action@v2.3.0
+        with:
+          push: true
+          files: |
+            compose.yml
+          set: |
+            *.platform=linux/amd64,linux/arm64
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+            auth-service.build-arg.DATABASE_URL=${{ secrets.DATABASE_URL }}
+            auth-service.build-arg.JWT_SECRET=${{ secrets.JWT_SECRET }}
+            auth-service.build-arg.SQLX_OFFLINE=${{ env.SQLX_OFFLINE }}
+            auth-service.build-arg.POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            auth-service.build-arg.REDIS_HOST_NAME=${{ secrets.REDIS_HOST_NAME }}
+            auth-service.build-arg.REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+            auth-service.build-arg.REDIS_PORT=${{ secrets.REDIS_PORT }}
 
-      - name: Build, tag, and push auth-service image to Docker Hub
-        id: build-auth-service-image
-        run: |
-          cd auth-service
+      # - name: Build, tag, and push auth-service image to Docker Hub
+      #   id: build-auth-service-image
+      #   run: |
+      #     cd auth-service
 
-          docker build \
-            --platform linux/arm64 \
-            --build-arg DATABASE_URL=${{ secrets.DATABASE_URL }} \
-            --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }} \
-            --build-arg SQLX_OFFLINE=${{ env.SQLX_OFFLINE }} \
-            --build-arg POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
-            --build-arg REDIS_HOST_NAME=${{ secrets.REDIS_HOST_NAME }} \
-            --build-arg REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }} \
-            --build-arg REDIS_PORT=${{ secrets.REDIS_PORT }} \
-            -t ${{ secrets.DOCKER_USERNAME }}/rusty-auth:${{ github.sha }} \
-            -t ${{ secrets.DOCKER_USERNAME }}/rusty-auth:latest .
-          docker push ${{ secrets.DOCKER_USERNAME }}/rusty-auth:${{ github.sha }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/rusty-auth:latest
+      #     docker build \
+      #       --build-arg DATABASE_URL=${{ secrets.DATABASE_URL }} \
+      #       --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }} \
+      #       --build-arg SQLX_OFFLINE=${{ env.SQLX_OFFLINE }} \
+      #       --build-arg POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+      #       --build-arg REDIS_HOST_NAME=${{ secrets.REDIS_HOST_NAME }} \
+      #       --build-arg REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }} \
+      #       --build-arg REDIS_PORT=${{ secrets.REDIS_PORT }} \
+      #       -t ${{ secrets.DOCKER_USERNAME }}/rusty-auth:${{ github.sha }} \
+      #       -t ${{ secrets.DOCKER_USERNAME }}/rusty-auth:latest .
+      #     docker push ${{ secrets.DOCKER_USERNAME }}/rusty-auth:${{ github.sha }}
+      #     docker push ${{ secrets.DOCKER_USERNAME }}/rusty-auth:latest
 
   deploy:
     needs: build
