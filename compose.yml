@@ -16,7 +16,7 @@ services:
 
   auth-service:
     container_name: auth-service
-    image: vinorelbine/auth-service
+    image: vinorelbine/rusty-auth:latest
     restart: "always"
     environment:
       JWT_SECRET: ${JWT_SECRET}
