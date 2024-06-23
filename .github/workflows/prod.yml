@@ -102,7 +102,6 @@ jobs:
           cd auth-service
 
           docker build \
-            --platform linux/amd64 \
             --platform linux/arm64 \
             --build-arg DATABASE_URL=${{ secrets.DATABASE_URL }} \
             --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }} \
