@@ -102,7 +102,7 @@ jobs:
           cd auth-service
            docker buildx create --use
            docker buildx build \
-             --platform linux/amd64,linux/arm64 \
+             --platform linux/arm64 \
              --build-arg DATABASE_URL=${{ secrets.DATABASE_URL }} \
              --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }} \
              --build-arg SQLX_OFFLINE=${{ env.SQLX_OFFLINE }} \
