@@ -41,7 +41,6 @@ fn set_redis_port() -> String {
 pub mod env {
     pub const JWT_SECRET_ENV_VAR: &str = "JWT_SECRET";
     pub const DATABASE_URL: &str = "DATABASE_URL";
-    pub const BASE_PATH: &str = "BASE_PATH";
     pub const DROPLET_IP: &str = "DROPLET_IP";
     pub const REDIS_HOST_NAME_ENV_VAR: &str = "REDIS_HOST_NAME";
     pub const REDIS_PASSWORD_ENV_VAR: &str = "REDIS_PASSWORD";

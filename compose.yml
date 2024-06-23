@@ -20,7 +20,6 @@ services:
     restart: "always"
     environment:
       JWT_SECRET: ${JWT_SECRET}
-      BASE_PATH: ${BASE_PATH}
       DATABASE_URL: "postgres://postgres.noadiwsilfsnfdwglydp:${POSTGRES_PASSWORD}@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
       REDIS_HOST_NAME: ${REDIS_HOST_NAME}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
