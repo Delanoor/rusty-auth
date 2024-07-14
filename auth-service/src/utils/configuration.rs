@@ -43,6 +43,8 @@ impl Settings {
     pub fn new() -> Result<Self, config::ConfigError> {
         let app_env: String = env::var("APP_ENV").unwrap_or_else(|_| "local".into());
 
+        tracing::info!("APP_ENV: {:?}", app_env);
+
         let env_file = match app_env.as_str() {
             "production" => "src/config/production.toml",
             _ => "src/config/development.toml",
