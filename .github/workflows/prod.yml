@@ -98,12 +98,7 @@ jobs:
       
       - name: Build, tag, and push auth-service image to Docker Hub
         uses: docker/bake-action@v5
-        with:
-            push: true
-            set: |
-            files: docker-bake.hcl
-              *.tags[0]={{ secrets.DOCKER_USERNAME }}/rusty-auth:{{ github.sha }}
-              *.tags[1]={{ secrets.DOCKER_USERNAME }}/rusty-auth:latest
+       
         env:
             DATABASE_URL: ${{ secrets.DATABASE_URL }}
             JWT_SECRET: ${{ secrets.JWT_SECRET }}
@@ -114,6 +109,12 @@ jobs:
             REDIS_PORT: ${{ secrets.REDIS_PORT }}
             DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
             GITHUB_SHA: ${{ github.sha }}
+        with:
+            push: true
+            files: docker-bake.hcl
+            set: |
+              *.tags[0]={{ secrets.DOCKER_USERNAME }}/rusty-auth:{{ github.sha }}
+              *.tags[1]={{ secrets.DOCKER_USERNAME }}/rusty-auth:latest
   
     
             
