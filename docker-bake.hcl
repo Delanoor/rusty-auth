@@ -14,8 +14,5 @@ target "auth-service" {
     REDIS_PASSWORD   = ""
     REDIS_PORT       = ""
   }
-  tags = [
-    "PLACEHOLDER_TAG",
-    "PLACEHOLDER_TAG_LATEST"
-  ]
+
 }
