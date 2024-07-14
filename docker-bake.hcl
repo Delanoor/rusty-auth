@@ -14,5 +14,8 @@ target "auth-service" {
     REDIS_PASSWORD   = "{{ .REDIS_PASSWORD }}"
     REDIS_PORT       = "{{ .REDIS_PORT }}"
   }
-  tags = []
+  tags = [
+    "{{ .DOCKER_USERNAME }}/rusty-auth:{{ .GITHUB_SHA }}",
+    "{{ .DOCKER_USERNAME }}/rusty-auth:latest"
+  ]
 }
