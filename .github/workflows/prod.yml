@@ -101,27 +101,7 @@ jobs:
         with:
             push: true
             files: docker-bake.hcl
-        env:
-            DATABASE_URL: ${{ secrets.DATABASE_URL }}
-            JWT_SECRET: ${{ secrets.JWT_SECRET }}
-            SQLX_OFFLINE: ${{ env.SQLX_OFFLINE }}
-            POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-            REDIS_HOST_NAME: ${{ secrets.REDIS_HOST_NAME }}
-            REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-            REDIS_PORT: ${{ secrets.REDIS_PORT }}
-            DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-            GITHUB_SHA: ${{ github.sha }}
-        with:
-            set: |
-              auth-service.args.DATABASE_URL=${{ secrets.DATABASE_URL }}
-              auth-service.args.JWT_SECRET=${{ secrets.JWT_SECRET }}
-              auth-service.args.SQLX_OFFLINE=${{ env.SQLX_OFFLINE }}
-              auth-service.args.POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-              auth-service.args.REDIS_HOST_NAME=${{ secrets.REDIS_HOST_NAME }}
-              auth-service.args.REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
-              auth-service.args.REDIS_PORT=${{ secrets.REDIS_PORT }}
-              auth-service.tags[0]=${{ secrets.DOCKER_USERNAME }}/rusty-auth:${{ github.sha }}
-              auth-service.tags[1]=${{ secrets.DOCKER_USERNAME }}/rusty-auth:latest
+        
         
             
 

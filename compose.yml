@@ -17,12 +17,12 @@ services:
     container_name: auth-service
     image: vinorelbine/rusty-auth:latest
     restart: "always"
-    environment:
-      JWT_SECRET: ${JWT_SECRET}
-      DATABASE_URL: "postgres://postgres.noadiwsilfsnfdwglydp:${POSTGRES_PASSWORD}@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
-      REDIS_HOST_NAME: ${REDIS_HOST_NAME}
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      REDIS_PORT: ${REDIS_PORT}
+    # environment:
+    #   JWT_SECRET: ${JWT_SECRET}
+    #   DATABASE_URL: "postgres://postgres.noadiwsilfsnfdwglydp:${POSTGRES_PASSWORD}@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
+    #   REDIS_HOST_NAME: ${REDIS_HOST_NAME}
+    #   REDIS_PASSWORD: ${REDIS_PASSWORD}
+    #   REDIS_PORT: ${REDIS_PORT}
     ports:
       - "8000:8000"
     networks:
