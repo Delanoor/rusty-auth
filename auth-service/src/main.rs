@@ -7,9 +7,7 @@ use auth_service::services::data_stores::postgres_user_store::PostgresUserStore;
 use auth_service::services::data_stores::redis_banned_token_store::RedisBannedTokenStore;
 use auth_service::services::data_stores::redis_two_fa_code_store::RedisTwoFACodeStore;
 
-use auth_service::utils::configuration::{
-    get_configuration, PostgresSettings, RedisSettings, CONFIG,
-};
+use auth_service::utils::configuration::{PostgresSettings, RedisSettings, CONFIG};
 
 use auth_service::utils::tracing::init_tracing;
 use auth_service::{get_postgres_pool, get_redis_client, Application};

@@ -17,6 +17,8 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 # Build application
 COPY . .
+
+
 ENV SQLX_OFFLINE true
 RUN cargo build --release --bin auth-service
 
@@ -29,6 +31,8 @@ RUN apt-get update && apt install -y \
 WORKDIR /app
 COPY --from=builder /app/target/release/auth-service /usr/local/bin
 COPY --from=builder /app/assets /app/assets
+
+COPY ./src/config/production.toml ./src/config/production.toml
 
 
 
