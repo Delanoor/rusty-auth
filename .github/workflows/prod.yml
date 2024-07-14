@@ -100,7 +100,8 @@ jobs:
         uses: docker/bake-action@v5
         with:
             push: true
-            files: docker-bake.hcl
+            files: |
+              compose.yml
         
         
             
