@@ -3,8 +3,8 @@ group "default" {
 }
 
 target "auth-service" {
-  context = "auth-service"
-  dockerfile = "auth-service/Dockerfile"
+  context = "."
+  dockerfile = "Dockerfile"
   args = {
     DATABASE_URL     = ""
     JWT_SECRET       = ""
